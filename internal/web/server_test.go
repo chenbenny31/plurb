@@ -15,25 +15,28 @@ import (
 	"github.com/chenbenny31/plurb/internal/cache"
 	"github.com/chenbenny31/plurb/internal/config"
 	"github.com/chenbenny31/plurb/internal/db/dbtest"
+	"github.com/chenbenny31/plurb/internal/notify"
 )
 
 // testApp is a running server plus a cookie-keeping client that doesn't
 // follow redirects, so tests can assert on them.
 type testApp struct {
-	t   *testing.T
-	srv *Server
-	ts  *httptest.Server
-	c   *http.Client
+	t     *testing.T
+	srv   *Server
+	ts    *httptest.Server
+	c     *http.Client
+	dbURL string
 }
 
 func newTestApp(t *testing.T, mutate func(*config.Config)) *testApp {
 	t.Helper()
-	pool := dbtest.New(t)
+	pool, dbURL := dbtest.NewWithURL(t)
 	cfg := config.Config{BaseURL: "http://localhost", Dev: true}
 	if mutate != nil {
 		mutate(&cfg)
 	}
-	srv, err := NewServer(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), pool, cache.NewMemory())
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv, err := NewServer(cfg, log, pool, cache.NewMemory(), notify.NewHub(log))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +46,7 @@ func newTestApp(t *testing.T, mutate func(*config.Config)) *testApp {
 	c := &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error {
 		return http.ErrUseLastResponse
 	}}
-	return &testApp{t: t, srv: srv, ts: ts, c: c}
+	return &testApp{t: t, srv: srv, ts: ts, c: c, dbURL: dbURL}
 }
 
 func (a *testApp) get(path string) (*http.Response, string) {

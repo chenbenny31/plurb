@@ -25,15 +25,29 @@ import (
 // New returns a pool on a fresh, fully migrated schema.
 func New(t *testing.T) *sql.DB {
 	t.Helper()
-	pool := Empty(t)
+	pool, _ := NewWithURL(t)
+	return pool
+}
+
+// NewWithURL is New plus the connection URL of the schema, for code that
+// opens its own connections (e.g. a LISTEN connection).
+func NewWithURL(t *testing.T) (*sql.DB, string) {
+	t.Helper()
+	pool, url := empty(t)
 	if _, err := db.Migrate(context.Background(), pool); err != nil {
 		t.Fatal(err)
 	}
-	return pool
+	return pool, url
 }
 
 // Empty returns a pool on a fresh schema with no tables.
 func Empty(t *testing.T) *sql.DB {
+	t.Helper()
+	pool, _ := empty(t)
+	return pool
+}
+
+func empty(t *testing.T) (*sql.DB, string) {
 	t.Helper()
 	raw := os.Getenv("PLURB_TEST_DATABASE_URL")
 	if raw == "" {
@@ -83,5 +97,5 @@ func Empty(t *testing.T) *sql.DB {
 			a.Close()
 		}
 	})
-	return pool
+	return pool, u.String()
 }

@@ -15,7 +15,8 @@ var (
 )
 
 type Store struct {
-	db *sql.DB
+	db            *sql.DB
+	notifyChannel string
 }
 
 func New(db *sql.DB) *Store { return &Store{db: db} }
