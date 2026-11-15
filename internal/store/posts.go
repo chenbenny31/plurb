@@ -220,11 +220,6 @@ func (s *Store) Related(ctx context.Context, p *Post, limit int) ([]*Post, error
 		LIMIT $3`, p.ID, p.AuthorID, limit)
 }
 
-func (s *Store) IncrementViews(ctx context.Context, postID int64) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE posts SET view_count = view_count + 1 WHERE id = $1`, postID)
-	return err
-}
-
 // Search matches published posts by english full-text search, falling back
 // to substring match (trigram-indexed) so CJK and partial words still hit.
 func (s *Store) Search(ctx context.Context, q string, limit int) ([]*Post, error) {
@@ -273,4 +268,77 @@ func (s *Store) TagBySlug(ctx context.Context, slug string) (*Tag, error) {
 		return nil, notFound(err)
 	}
 	return t, nil
+}
+
+// SitemapEntry is a published post's location and last change.
+type SitemapEntry struct {
+	Username  string
+	Slug      string
+	UpdatedAt time.Time
+}
+
+// SitemapEntries lists every published post without loading bodies.
+func (s *Store) SitemapEntries(ctx context.Context) ([]SitemapEntry, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT u.username, p.slug, p.updated_at
+		FROM posts p JOIN users u ON u.id = p.author_id
+		WHERE p.status = 'published' ORDER BY p.published_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SitemapEntry
+	for rows.Next() {
+		var e SitemapEntry
+		if err := rows.Scan(&e.Username, &e.Slug, &e.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+// AddViews applies buffered view counts in one statement.
+func (s *Store) AddViews(ctx context.Context, counts map[int64]int64) error {
+	ids := make([]int64, 0, len(counts))
+	ns := make([]int64, 0, len(counts))
+	for id, n := range counts {
+		ids = append(ids, id)
+		ns = append(ns, n)
+	}
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE posts p SET view_count = p.view_count + v.n
+		FROM unnest($1::bigint[], $2::bigint[]) AS v(id, n)
+		WHERE p.id = v.id`, pq.Array(ids), pq.Array(ns))
+	return err
+}
+
+// PostRef is a lightweight pointer to a post, cheap to cache.
+type PostRef struct {
+	Username string
+	Slug     string
+	Title    string
+	Views    int64
+}
+
+// PopularPosts returns the most-viewed published posts.
+func (s *Store) PopularPosts(ctx context.Context, limit int) ([]PostRef, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT u.username, p.slug, p.title, p.view_count
+		FROM posts p JOIN users u ON u.id = p.author_id
+		WHERE p.status = 'published' AND p.view_count > 0
+		ORDER BY p.view_count DESC, p.published_at DESC LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []PostRef
+	for rows.Next() {
+		var r PostRef
+		if err := rows.Scan(&r.Username, &r.Slug, &r.Title, &r.Views); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }

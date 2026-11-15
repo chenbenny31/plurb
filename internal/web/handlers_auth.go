@@ -37,6 +37,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	username := strings.ToLower(strings.TrimSpace(r.PostFormValue("username")))
 	password := r.PostFormValue("password")
 	next := r.PostFormValue("next")
+	// Per IP slows spraying; per username slows guessing one account.
+	if !s.allow(w, r, "login:ip:"+s.clientIP(r), loginPerIP, loginWindow) ||
+		!s.allow(w, r, "login:user:"+username, loginPerUser, loginWindow) {
+		return
+	}
 
 	u, err := s.store.UserByUsername(r.Context(), username)
 	switch {
@@ -87,6 +92,9 @@ func (s *Server) signupPage(w http.ResponseWriter, r *http.Request) {
 func (s *Server) signup(w http.ResponseWriter, r *http.Request) {
 	if !s.cfg.OpenSignup {
 		s.notFound(w, r)
+		return
+	}
+	if !s.allow(w, r, "signup:ip:"+s.clientIP(r), signupPerIP, signupWindow) {
 		return
 	}
 	f := signupForm{
@@ -158,6 +166,9 @@ func (s *Server) githubStart(w http.ResponseWriter, r *http.Request) {
 func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 	if s.gh == nil {
 		s.notFound(w, r)
+		return
+	}
+	if !s.allow(w, r, "oauth:ip:"+s.clientIP(r), loginPerIP, loginWindow) {
 		return
 	}
 	c, err := r.Cookie(oauthCookie)

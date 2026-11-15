@@ -42,6 +42,16 @@
         </div>
 
         <aside class="index-sidebar">
+            {{if .Data.Popular}}
+            <div class="sidebar-section">
+                <h3>Popular</h3>
+                <ul class="sidebar-list">
+                    {{range .Data.Popular}}
+                    <li><a href="/panorama/{{.Username}}/{{.Slug}}">{{.Title}}</a> <span class="hint">{{.Views}}</span></li>
+                    {{end}}
+                </ul>
+            </div>
+            {{end}}
             {{if .Data.Tags}}
             <div class="sidebar-section">
                 <h3>Tags</h3>

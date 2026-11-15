@@ -21,6 +21,12 @@ type Config struct {
 	// OpenSignup lets anyone create an account (form or GitHub). When false,
 	// accounts are created with `plurb createuser` only.
 	OpenSignup bool
+	// RedisURL enables Redis for caching, rate limits and view counting;
+	// empty means in-process memory (fine for a single instance).
+	RedisURL string
+	// TrustProxy takes the client IP from X-Real-IP (set by our nginx).
+	// Only enable behind a proxy that overwrites that header.
+	TrustProxy bool
 	// GitHub OAuth app credentials; GitHub login is off when either is empty.
 	GitHubClientID     string
 	GitHubClientSecret string
@@ -36,6 +42,8 @@ func Load() (Config, error) {
 		BaseURL:     strings.TrimRight(env("PLURB_BASE_URL", "http://localhost:8080"), "/"),
 		Dev:         env("PLURB_DEV", "") == "1",
 		OpenSignup:  env("PLURB_SIGNUP", "closed") == "open",
+		RedisURL:    env("REDIS_URL", ""),
+		TrustProxy:  env("PLURB_TRUST_PROXY", "") == "1",
 
 		GitHubClientID:     env("GITHUB_CLIENT_ID", ""),
 		GitHubClientSecret: env("GITHUB_CLIENT_SECRET", ""),

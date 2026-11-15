@@ -157,6 +157,9 @@ func (s *Server) newPostPage(w http.ResponseWriter, r *http.Request) {
 func (s *Server) createPost(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
 	u := currentUser(r)
+	if !s.allow(w, r, "write:user:"+strconv.FormatInt(u.ID, 10), writesPerUser, writesWindow) {
+		return
+	}
 	form := readPostForm(r)
 	in, problem := form.validate()
 	if problem == "" {
@@ -243,6 +246,9 @@ func (s *Server) updatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u := currentUser(r)
+	if !s.allow(w, r, "write:user:"+strconv.FormatInt(u.ID, 10), writesPerUser, writesWindow) {
+		return
+	}
 	form := readPostForm(r)
 	in, problem := form.validate()
 	if problem == "" {
@@ -293,6 +299,9 @@ func (s *Server) deletePost(w http.ResponseWriter, r *http.Request) {
 // renderer as published posts and returns an HTML fragment.
 func (s *Server) previewMarkdown(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
+	if !s.allow(w, r, "preview:user:"+strconv.FormatInt(currentUser(r).ID, 10), previewPerUser, previewWindow) {
+		return
+	}
 	body := r.PostFormValue("body")
 	if len(body) > maxBodyBytes {
 		http.Error(w, "too long", http.StatusRequestEntityTooLarge)

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 // seedPost inserts a post directly (the editor arrives in a later layer).
@@ -128,6 +129,10 @@ func TestViewCounting(t *testing.T) {
 	id := a.seedPost("benny", "hello", "Hello", "x", true)
 
 	views := func() (n int) {
+		// Views are buffered; a Run with a cancelled context flushes once and returns.
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		a.srv.kv.Views.Run(ctx, time.Hour, a.srv.FlushViews)
 		a.srv.db.QueryRow(`SELECT view_count FROM posts WHERE id = $1`, id).Scan(&n)
 		return n
 	}

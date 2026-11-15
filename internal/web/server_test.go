@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/chenbenny31/plurb/internal/auth"
+	"github.com/chenbenny31/plurb/internal/cache"
 	"github.com/chenbenny31/plurb/internal/config"
 	"github.com/chenbenny31/plurb/internal/db/dbtest"
 )
@@ -32,7 +33,7 @@ func newTestApp(t *testing.T, mutate func(*config.Config)) *testApp {
 	if mutate != nil {
 		mutate(&cfg)
 	}
-	srv, err := NewServer(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), pool)
+	srv, err := NewServer(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), pool, cache.NewMemory())
 	if err != nil {
 		t.Fatal(err)
 	}

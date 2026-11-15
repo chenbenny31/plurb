@@ -1,15 +1,11 @@
 package web
 
 import (
-	"crypto/sha256"
 	"errors"
 	"html/template"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/chenbenny31/plurb/internal/markdown"
 	"github.com/chenbenny31/plurb/internal/store"
@@ -21,6 +17,7 @@ const pageSize = 10
 
 type indexPage struct {
 	Posts     []*store.Post
+	Popular   []store.PostRef
 	Tags      []store.Tag
 	Series    []store.Series
 	ActiveTag string
@@ -53,7 +50,13 @@ func (s *Server) panoramaIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d := indexPage{Posts: posts, Tags: tags, Series: series, ActiveTag: tag, Page: page}
+	popular, err := s.popularPosts(ctx)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+
+	d := indexPage{Posts: posts, Popular: popular, Tags: tags, Series: series, ActiveTag: tag, Page: page}
 	last := (total + pageSize - 1) / pageSize
 	for i := 1; i <= last; i++ {
 		d.Pages = append(d.Pages, i)
@@ -237,7 +240,7 @@ func (s *Server) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := s.md.Render(p.BodyMD)
+	out, err := s.renderPost(ctx, p)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -252,9 +255,9 @@ func (s *Server) post(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, err)
 			return
 		}
-		if !isOwner && s.views.first(p.ID, r) {
-			if err := s.store.IncrementViews(ctx, p.ID); err != nil {
-				s.log.Error("increment views", "err", err)
+		if !isOwner && !isBot(r.UserAgent()) {
+			if err := s.kv.Views.Hit(ctx, p.ID, s.visitor(r)); err != nil {
+				s.log.Warn("count view", "err", err)
 			}
 		}
 	}
@@ -281,36 +284,9 @@ func (s *Server) post(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, http.StatusOK, "post", v)
 }
 
-// viewCounter counts at most one view per post per visitor per day. Visitors
-// are identified by a hash of their IP and User-Agent, kept only in memory.
-type viewCounter struct {
-	mu   sync.Mutex
-	day  string
-	seen map[[32]byte]bool
-}
-
-func (c *viewCounter) first(postID int64, r *http.Request) bool {
-	ua := r.UserAgent()
-	if ua == "" || strings.Contains(strings.ToLower(ua), "bot") {
-		return false
-	}
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		ip = r.RemoteAddr
-	}
-	if fwd := r.Header.Get("X-Real-IP"); fwd != "" {
-		ip = fwd // set by our nginx; trustworthy only behind it
-	}
-	key := sha256.Sum256([]byte(strconv.FormatInt(postID, 10) + "|" + ip + "|" + ua))
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if today := time.Now().UTC().Format("2006-01-02"); c.day != today || len(c.seen) > 200_000 {
-		c.day, c.seen = today, map[[32]byte]bool{}
-	}
-	if c.seen[key] {
-		return false
-	}
-	c.seen[key] = true
-	return true
+// isBot skips obvious crawlers so they don't inflate view counts.
+func isBot(ua string) bool {
+	ua = strings.ToLower(ua)
+	return ua == "" || strings.Contains(ua, "bot") || strings.Contains(ua, "crawl") ||
+		strings.Contains(ua, "spider") || strings.Contains(ua, "curl")
 }

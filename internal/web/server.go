@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/chenbenny31/plurb/internal/auth"
+	"github.com/chenbenny31/plurb/internal/cache"
 	"github.com/chenbenny31/plurb/internal/config"
 	"github.com/chenbenny31/plurb/internal/markdown"
 	"github.com/chenbenny31/plurb/internal/store"
@@ -23,14 +24,14 @@ type Server struct {
 	store *store.Store
 	md    *markdown.Renderer
 	gh    *auth.GitHub // nil when GitHub login isn't configured
+	kv    *cache.Backend
 	tmpl  templates
 	// static path ("css/main.css") -> content hash for cache busting
 	assetVer map[string]string
-	views    viewCounter
 }
 
-func NewServer(cfg config.Config, log *slog.Logger, db *sql.DB) (*Server, error) {
-	s := &Server{cfg: cfg, log: log, db: db, store: store.New(db), md: markdown.New()}
+func NewServer(cfg config.Config, log *slog.Logger, db *sql.DB, kv *cache.Backend) (*Server, error) {
+	s := &Server{cfg: cfg, log: log, db: db, store: store.New(db), md: markdown.New(), kv: kv}
 	if cfg.GitHubEnabled() {
 		s.gh = auth.NewGitHub(cfg.GitHubClientID, cfg.GitHubClientSecret, cfg.BaseURL+"/auth/github/callback")
 	}
