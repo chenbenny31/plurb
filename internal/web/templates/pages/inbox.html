@@ -1,0 +1,17 @@
+{{define "main"}}
+<main class="container">
+    <h1>Inbox</h1>
+    {{if .Data.Items}}
+    <ul class="inbox-list">
+        {{range .Data.Items}}
+        <li class="{{if not .Read}}unread{{end}}">
+            <a href="/forum/t/{{.ThreadID}}#c{{.CommentID}}">
+                {{.ActorDisplayName}} {{if eq .Kind "comment_reply"}}replied to your comment in{{else}}commented on{{end}} “{{.ThreadTitle}}”
+            </a>
+            <span class="date">{{ago .CreatedAt}}</span>
+        </li>
+        {{end}}
+    </ul>
+    {{else}}<p>Nothing yet. Replies to your threads and comments show up here, live.</p>{{end}}
+</main>
+{{end}}

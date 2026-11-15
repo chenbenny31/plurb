@@ -8,12 +8,14 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/chenbenny31/plurb/internal/auth"
 	"github.com/chenbenny31/plurb/internal/cache"
 	"github.com/chenbenny31/plurb/internal/config"
 	"github.com/chenbenny31/plurb/internal/markdown"
+	"github.com/chenbenny31/plurb/internal/notify"
 	"github.com/chenbenny31/plurb/internal/store"
 )
 
@@ -25,13 +27,18 @@ type Server struct {
 	md    *markdown.Renderer
 	gh    *auth.GitHub // nil when GitHub login isn't configured
 	kv    *cache.Backend
-	tmpl  templates
+	hub   *notify.Hub
+	// closed on shutdown so open SSE streams return
+	streamsClosed chan struct{}
+	closeOnce     sync.Once
+	tmpl          templates
 	// static path ("css/main.css") -> content hash for cache busting
 	assetVer map[string]string
 }
 
-func NewServer(cfg config.Config, log *slog.Logger, db *sql.DB, kv *cache.Backend) (*Server, error) {
-	s := &Server{cfg: cfg, log: log, db: db, store: store.New(db), md: markdown.New(), kv: kv}
+func NewServer(cfg config.Config, log *slog.Logger, db *sql.DB, kv *cache.Backend, hub *notify.Hub) (*Server, error) {
+	s := &Server{cfg: cfg, log: log, db: db, store: store.New(db), md: markdown.New(), kv: kv,
+		hub: hub, streamsClosed: make(chan struct{})}
 	if cfg.GitHubEnabled() {
 		s.gh = auth.NewGitHub(cfg.GitHubClientID, cfg.GitHubClientSecret, cfg.BaseURL+"/auth/github/callback")
 	}
@@ -82,6 +89,17 @@ func (s *Server) routes(mux *http.ServeMux) {
 	ed("POST /panorama/editor/posts/{id}/delete", s.deletePost)
 	ed("GET /panorama/editor/export", s.exportPosts)
 
+	mux.HandleFunc("GET /forum", s.forumIndex)
+	mux.HandleFunc("GET /forum/search", s.forumSearch)
+	mux.HandleFunc("GET /forum/t/{id}", s.threadPage)
+	ed("GET /forum/new", s.newThreadPage)
+	ed("POST /forum/new", s.createThread)
+	ed("POST /forum/t/{id}/comments", s.createComment)
+	ed("POST /forum/vote", s.vote)
+	ed("GET /forum/reputation", s.repHistory)
+	ed("GET /notifications", s.inbox)
+	ed("GET /notifications/stream", s.notificationStream)
+
 	mux.HandleFunc("GET /panorama/feed.xml", s.globalFeed)
 	mux.HandleFunc("GET /panorama/{username}/feed.xml", s.authorFeed)
 	mux.HandleFunc("GET /sitemap.xml", s.sitemap)
@@ -121,7 +139,7 @@ func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) landing(w http.ResponseWriter, r *http.Request) {
 	v := s.newView(r, "plurb", nil)
-	v.Panorama = false
+	v.Section = ""
 	s.render(w, r, http.StatusOK, "landing", v)
 }
 
@@ -155,3 +173,6 @@ func (s *Server) codeCSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	w.Write([]byte(markdown.CodeCSS()))
 }
+
+// Store exposes the data layer (tests use it to set a notify channel).
+func (s *Server) Store() *store.Store { return s.store }

@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{asset "css/main.css"}}">
     <link rel="stylesheet" href="/static/css/code.css">
     <script src="{{asset "js/theme.js"}}"></script>
+    {{if .User}}<script src="{{asset "js/notify.js"}}" defer></script>{{end}}
     {{with .OG}}
     <meta property="og:type" content="article">
     <meta property="og:title" content="{{.Title}}">
@@ -19,22 +20,29 @@
 </head>
 <body>
 <nav>
-    <div class="{{if .Panorama}}nav-inner{{else}}nav-inner nav-inner-wide{{end}}">
+    <div class="{{if .Section}}nav-inner{{else}}nav-inner nav-inner-wide{{end}}">
         <div class="nav-brand-group">
-            <a class="nav-brand" href="{{if .Panorama}}/panorama{{else}}/{{end}}">
+            <a class="nav-brand" href="{{if eq .Section "forum"}}/forum{{else if .Section}}/panorama{{else}}/{{end}}">
                 <img src="{{asset "logo.svg"}}" alt="plurb" class="nav-logo">
-                {{if .Panorama}}<span class="nav-brand-sub">panorama</span>{{end}}
+                {{if eq .Section "forum"}}<span class="nav-brand-sub">study room</span>
+                {{else if .Section}}<span class="nav-brand-sub">panorama</span>{{end}}
             </a>
-            <span class="nav-tagline">{{if .Panorama}}you are what you show.{{else}}out of many, one.{{end}}</span>
+            <span class="nav-tagline">{{if eq .Section "forum"}}you are already accepted!{{else if .Section}}you are what you show.{{else}}out of many, one.{{end}}</span>
         </div>
         <div class="nav-links">
-            {{if .Panorama}}
-            <form class="nav-search" action="/panorama/search" method="get">
+            {{if .Section}}
+            <form class="nav-search" action="{{if eq .Section "forum"}}/forum/search{{else}}/panorama/search{{end}}" method="get">
                 <input type="search" name="q" placeholder="search…" class="nav-search-input" value="{{.Q}}">
             </form>
             {{end}}
+            {{if eq .Section "forum"}}<a class="nav-btn" href="/panorama">panorama</a>{{else}}<a class="nav-btn" href="/forum">forum</a>{{end}}
             {{if .User}}
+                {{if eq .Section "forum"}}
+                <a class="nav-btn" href="/forum/reputation" title="Your reputation">{{.User.Reputation}} rep</a>
+                {{else}}
                 <a class="nav-btn" href="/panorama/editor">dashboard</a>
+                {{end}}
+                <a class="nav-btn" href="/notifications" title="Inbox">inbox<span id="inboxCount" class="badge"{{if not .Unread}} hidden{{end}}>{{.Unread}}</span></a>
                 <a class="nav-btn" href="/panorama/editor/account">account</a>
                 <form action="/logout" method="post" class="nav-form">
                     <button type="submit" class="nav-btn nav-btn-plain">logout</button>
@@ -43,7 +51,7 @@
                 <a class="nav-btn" href="/login">login</a>
                 {{if .OpenSignup}}<a class="nav-btn" href="/signup">sign up</a>{{end}}
             {{end}}
-            {{if .Panorama}}
+            {{if .Section}}
                 <a class="nav-btn nav-btn-back" href="/">&#8592; plurb</a>
             {{else}}
                 <a class="nav-btn" href="/panorama">panorama</a>

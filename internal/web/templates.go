@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,12 +23,13 @@ var assets embed.FS
 type view struct {
 	Title      string
 	User       *store.User
-	Panorama   bool   // nav variant: inside Panorama vs the plurb landing
+	Section    string // "panorama", "forum", or "" for the plurb landing
 	Q          string // current search query, echoed in the nav search box
 	OG         *ogMeta
 	RSSURL     string
 	OpenSignup bool
 	GitHub     bool
+	Unread     int // unread notifications for the signed-in user
 	Data       any
 }
 
@@ -75,14 +77,20 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, page
 
 // newView fills the fields every page needs.
 func (s *Server) newView(r *http.Request, title string, data any) *view {
-	return &view{
+	v := &view{
 		Title:      title,
 		User:       currentUser(r),
-		Panorama:   true,
+		Section:    "panorama",
 		OpenSignup: s.cfg.OpenSignup,
 		GitHub:     s.gh != nil,
 		Data:       data,
 	}
+	if v.User != nil {
+		if n, err := s.store.UnreadCount(r.Context(), v.User.ID); err == nil {
+			v.Unread = n
+		}
+	}
+	return v
 }
 
 func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +128,12 @@ func templateFuncs(assetURL func(string) string) template.FuncMap {
 			}
 			return ""
 		},
-		"add": func(a, b int) int { return a + b },
+		"add":   func(a, b int) int { return a + b },
+		"score": formatScore,
+		"voteArgs": func(typ string, id int64, score float64, myVote int, thread int64, canDown bool, own any) voteArgs {
+			return voteArgs{typ, id, score, myVote, thread, canDown, truthy(own)}
+		},
+		"ago": ago,
 	}
 }
 
@@ -141,4 +154,42 @@ func assetVersions() (map[string]string, error) {
 		return nil
 	})
 	return v, err
+}
+
+// ago renders a compact relative time: "5m", "3h", "2d", then the date.
+func ago(t time.Time) string {
+	d := time.Since(t)
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		return strconv.Itoa(int(d.Minutes())) + "m ago"
+	case d < 24*time.Hour:
+		return strconv.Itoa(int(d.Hours())) + "h ago"
+	case d < 30*24*time.Hour:
+		return strconv.Itoa(int(d.Hours()/24)) + "d ago"
+	}
+	return t.Format("2006-01-02")
+}
+
+// voteArgs feeds the "voter" template partial.
+type voteArgs struct {
+	Type        string
+	ID          int64
+	Score       float64
+	MyVote      int
+	Thread      int64
+	CanDownvote bool
+	Own         bool // the viewer wrote it, so they can't vote
+}
+
+// truthy interprets the result of a template "and"/"or" expression.
+func truthy(v any) bool {
+	switch x := v.(type) {
+	case bool:
+		return x
+	case *store.User:
+		return x != nil
+	}
+	return false
 }

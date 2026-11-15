@@ -28,7 +28,7 @@ func (s *Store) CreateSession(ctx context.Context, userID int64, ttl time.Durati
 func (s *Store) UserBySession(ctx context.Context, token string) (*User, error) {
 	sum := sha256.Sum256([]byte(token))
 	return scanUser(s.db.QueryRowContext(ctx, `
-		SELECT u.id, u.username, u.display_name, u.password_hash, u.about_md, u.role, u.created_at
+		SELECT u.id, u.username, u.display_name, u.password_hash, u.about_md, u.role, u.created_at, u.reputation
 		FROM sessions s JOIN users u ON u.id = s.user_id
 		WHERE s.token_hash = $1 AND s.expires_at > now()`, sum[:]))
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/chenbenny31/plurb/internal/config"
 	"github.com/chenbenny31/plurb/internal/db"
 	"github.com/chenbenny31/plurb/internal/legacy"
+	"github.com/chenbenny31/plurb/internal/notify"
 	"github.com/chenbenny31/plurb/internal/store"
 	"github.com/chenbenny31/plurb/internal/web"
 )
@@ -35,6 +36,8 @@ commands:
            or the first line of stdin
   passwd <username>
            set a user's password (same input rules as createuser)
+  rep-rebuild
+           recompute cached reputation from the append-only ledger
   import-legacy -from <old-database-url>
            copy users, posts, tags and series from the old Java plurb
            database into this (empty) one`
@@ -72,6 +75,19 @@ func run(args []string) error {
 		return setPassword(cfg, log, args)
 	case "import-legacy":
 		return importLegacy(cfg, log, args)
+	case "rep-rebuild":
+		ctx := context.Background()
+		pool, err := openAndMigrate(ctx, cfg, log)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+		n, err := store.New(pool).RebuildReputation(ctx)
+		if err != nil {
+			return err
+		}
+		log.Info("reputation rebuilt from ledger", "users_corrected", n)
+		return nil
 	case "help", "-h", "--help":
 		fmt.Println(usage)
 		return nil
@@ -117,7 +133,15 @@ func serve(cfg config.Config, log *slog.Logger) error {
 	}
 	log.Info("cache backend", "kind", kv.Name)
 
-	app, err := web.NewServer(cfg, log, pool, kv)
+	// One LISTEN connection per instance feeds the in-process SSE hub.
+	hub := notify.NewHub(log)
+	go func() {
+		if err := hub.Listen(ctx, cfg.DatabaseURL, store.DefaultNotifyChannel); err != nil {
+			log.Error("notify listener stopped", "err", err)
+		}
+	}()
+
+	app, err := web.NewServer(cfg, log, pool, kv, hub)
 	if err != nil {
 		return err
 	}
@@ -145,6 +169,7 @@ func serve(cfg config.Config, log *slog.Logger) error {
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
+	srv.RegisterOnShutdown(app.CloseStreams) // don't let open SSE streams stall shutdown
 
 	errc := make(chan error, 1)
 	go func() {

@@ -14,6 +14,7 @@ type User struct {
 	AboutMD      string
 	Role         string
 	CreatedAt    time.Time
+	Reputation   int // cached sum of the rep_events ledger
 }
 
 func (u *User) IsAdmin() bool { return u != nil && u.Role == "admin" }
@@ -31,11 +32,11 @@ var reserved = map[string]bool{
 // ValidUsername reports whether name is well-formed and not reserved.
 func ValidUsername(name string) bool { return UsernamePattern.MatchString(name) && !reserved[name] }
 
-const userCols = `id, username, display_name, password_hash, about_md, role, created_at`
+const userCols = `id, username, display_name, password_hash, about_md, role, created_at, reputation`
 
 func scanUser(row interface{ Scan(...any) error }) (*User, error) {
 	u := &User{}
-	err := row.Scan(&u.ID, &u.Username, &u.DisplayName, &u.PasswordHash, &u.AboutMD, &u.Role, &u.CreatedAt)
+	err := row.Scan(&u.ID, &u.Username, &u.DisplayName, &u.PasswordHash, &u.AboutMD, &u.Role, &u.CreatedAt, &u.Reputation)
 	if err != nil {
 		return nil, notFound(err)
 	}
@@ -91,7 +92,7 @@ func (s *Store) UpdateProfile(ctx context.Context, userID int64, displayName, ab
 // ("github", "12345").
 func (s *Store) UserByIdentity(ctx context.Context, provider, subject string) (*User, error) {
 	return scanUser(s.db.QueryRowContext(ctx, `
-		SELECT u.id, u.username, u.display_name, u.password_hash, u.about_md, u.role, u.created_at
+		SELECT u.id, u.username, u.display_name, u.password_hash, u.about_md, u.role, u.created_at, u.reputation
 		FROM user_identities i JOIN users u ON u.id = i.user_id
 		WHERE i.provider = $1 AND i.subject = $2`, provider, subject))
 }

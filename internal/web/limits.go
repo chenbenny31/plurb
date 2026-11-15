@@ -33,6 +33,9 @@ func (s *Server) clientIP(r *http.Request) string {
 // allow applies a sliding-window limit and, when exceeded, answers 429 with
 // Retry-After. Callers return immediately when it reports false.
 func (s *Server) allow(w http.ResponseWriter, r *http.Request, key string, limit int, window time.Duration) bool {
+	if scale := s.cfg.RateLimitScale; scale > 0 && scale != 1 {
+		limit = int(math.Max(1, float64(limit)*scale))
+	}
 	ok, retry, err := s.kv.Limiter.Allow(r.Context(), key, limit, window)
 	if err != nil {
 		s.log.Warn("rate limiter unavailable, allowing", "key", key, "err", err)
@@ -81,13 +84,19 @@ func (s *Server) FlushViews(ctx context.Context, counts map[int64]int64) error {
 // update time so an edit naturally produces a new key (no invalidation).
 func (s *Server) renderPost(ctx context.Context, p *store.Post) (markdown.Rendered, error) {
 	key := "md:" + strconv.FormatInt(p.ID, 10) + ":" + strconv.FormatInt(p.UpdatedAt.UnixNano(), 36)
+	return s.renderCached(ctx, key, p.BodyMD)
+}
+
+// renderCached renders markdown through the cache. The key must change
+// whenever src does.
+func (s *Server) renderCached(ctx context.Context, key, src string) (markdown.Rendered, error) {
 	if b, ok, err := s.kv.Cache.Get(ctx, key); err == nil && ok {
 		var out markdown.Rendered
 		if json.Unmarshal(b, &out) == nil {
 			return out, nil
 		}
 	}
-	out, err := s.md.Render(p.BodyMD)
+	out, err := s.md.Render(src)
 	if err != nil {
 		return out, err
 	}

@@ -1,0 +1,21 @@
+{{define "main"}}
+<main class="container">
+    <h1>Reputation: {{.User.Reputation}}</h1>
+    <p class="hint">Every change is a line in an append-only ledger; retracted votes add a correcting line rather than erasing history.</p>
+    {{if .Data.Events}}
+    <table class="post-table">
+        <thead><tr><th>Change</th><th>Why</th><th>Where</th><th>When</th></tr></thead>
+        <tbody>
+        {{range .Data.Events}}
+        <tr>
+            <td class="{{if lt .Delta 0}}link-danger{{end}}">{{if gt .Delta 0}}+{{end}}{{.Delta}}</td>
+            <td>{{.Reason}}</td>
+            <td>{{if eq .TargetType "thread"}}<a href="/forum/t/{{.TargetID}}">thread</a>{{else if eq .TargetType "comment"}}comment{{end}}</td>
+            <td>{{ago .CreatedAt}}</td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{else}}<p>No reputation yet. It comes from upvotes on your threads and comments.</p>{{end}}
+</main>
+{{end}}

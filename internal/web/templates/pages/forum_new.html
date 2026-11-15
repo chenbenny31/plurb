@@ -1,0 +1,20 @@
+{{define "main"}}
+<main class="container">
+    <h1>New thread</h1>
+    {{with .Data.Error}}<p class="error">{{.}}</p>{{end}}
+    <form action="/forum/new" method="post" class="edit-form">
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" value="{{.Data.Title}}" maxlength="200" required autofocus>
+        </div>
+        <div class="form-group">
+            <label for="body">Body <span class="hint">(markdown; link images/videos by URL)</span></label>
+            <textarea id="body" name="body" rows="14">{{.Data.Body}}</textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit">Post thread</button>
+            <a href="/forum">Cancel</a>
+        </div>
+    </form>
+</main>
+{{end}}

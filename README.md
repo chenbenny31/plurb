@@ -3,7 +3,8 @@
 > Reputation-weighted community platform where your voice is earned.
 
 plurb is a self-hosted, text-only community platform: one Go binary in front of PostgreSQL.
-Phase 1 (**Panorama**) is a multi-user markdown blog. Next: reputation-weighted discussion.
+**Panorama** is a multi-user markdown blog; the **Study Room** is a forum where votes are
+weighted by earned reputation.
 
 **Live:** [plurb.org](https://plurb.org)
 
@@ -15,6 +16,18 @@ Phase 1 (**Panorama**) is a multi-user markdown blog. Next: reputation-weighted 
 - **Safe rendering.** Markdown goes through goldmark with raw HTML disabled, plus an AST
   pass that enforces the URL policy before rendering. A strict CSP (`script-src 'self'`,
   no inline styles) backs it up.
+- **Reputation-weighted votes.** A vote's weight is snapshotted from the voter's reputation
+  (`1 + log2(1 + rep/100)`, capped at 5; accounts under a day old weigh 0). Reputation lives
+  in an append-only ledger (`rep_events`): retracting a vote appends a compensating row, and
+  per-voter / per-author daily caps blunt vote rings. Each vote is one transaction that locks
+  the target and its author, so concurrent votes can't lose updates. Threads rank by
+  `score / (age_hours + 2)^1.5`. The rules live in `internal/rep`.
+- **Live notifications.** A reply inserts a notification and calls `pg_notify` in the same
+  transaction, so NOTIFY fires only on commit. Each instance holds one `LISTEN` connection
+  feeding an in-process hub, which pushes unread counts to browsers over Server-Sent Events —
+  replies reach readers connected to any instance, with no extra broker.
+- **Caching & limits.** Redis (optional) caches rendered markdown, buffers view counts
+  (write-behind, flushed every 30s) and runs sliding-window rate limits as a Lua script.
 - **One binary.** Templates, CSS and JS are embedded; migrations run on startup.
 
 ## Stack
@@ -26,17 +39,21 @@ Phase 1 (**Panorama**) is a multi-user markdown blog. Next: reputation-weighted 
 | Markdown | goldmark + chroma (server-side highlighting) |
 | Search | Postgres full-text search + `pg_trgm` for substring / CJK matches |
 | Auth | PBKDF2-SHA256 passwords, DB-backed sessions, GitHub OAuth |
+| Cache | Redis (`go-redis`), with an in-process fallback |
 | Infra | nginx, systemd |
 
 ## Layout
 
 ```
-cmd/plurb/            entrypoint: serve, migrate, createuser, passwd, import-legacy
+cmd/plurb/            entrypoint: serve, migrate, createuser, passwd, rep-rebuild, import-legacy
 internal/config/      env configuration
 internal/db/          connection pool, migrator, migrations/*.sql
 internal/store/       data access (plain SQL)
 internal/markdown/    safe markdown renderer, embeds, TOC
 internal/auth/        password hashing, GitHub OAuth client
+internal/rep/         reputation rules: vote weight, rewards, caps, hot ranking
+internal/cache/       cache, rate limiter, view counter (Redis or in-memory)
+internal/notify/      LISTEN/NOTIFY hub feeding SSE streams
 internal/web/         handlers, middleware, templates/, static/
 internal/legacy/      one-off importer from the old Java/Spring database
 deploy/               systemd unit, nginx site, env example, deploy script
@@ -62,6 +79,8 @@ echo 'a long password' | go run ./cmd/plurb createuser -admin -name Benny benny
 | `PLURB_DEV` | – | `1` drops the `Secure` cookie flag for plain-http localhost |
 | `PLURB_SIGNUP` | `closed` | `open` enables self-service sign-up |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | – | enable GitHub login |
+| `REDIS_URL` | – | Redis for cache / rate limits / view counts (in-memory if unset) |
+| `PLURB_TRUST_PROXY` | – | `1` to take client IPs from nginx's `X-Real-IP` |
 
 ### Tests
 
@@ -71,6 +90,8 @@ Unit tests run anywhere. Integration tests need a database whose name ends in `_
 ```bash
 createdb plurb_test
 PLURB_TEST_DATABASE_URL='postgres://plurb:plurb@localhost:5432/plurb_test?sslmode=disable' go test ./...
+# optionally also run the cache tests against Redis:
+PLURB_TEST_REDIS_URL=redis://localhost:6379/15 go test ./internal/cache
 ```
 
 ## Deployment
