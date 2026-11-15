@@ -78,3 +78,6 @@
 </body>
 </html>
 {{end}}
+
+{{/* Tag chips for a post; tags link to the author's tag page. */}}
+{{define "tags"}}{{$u := .AuthorUsername}}{{range .Tags}}<a class="tag" href="/panorama/{{$u}}/tag/{{.Slug}}">{{.Name}}</a> {{end}}{{end}}

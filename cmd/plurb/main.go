@@ -159,8 +159,8 @@ func createUser(cfg config.Config, log *slog.Logger, args []string) error {
 		return errors.New("usage: plurb createuser [-admin] [-name NAME] <username>")
 	}
 	username := strings.ToLower(fs.Arg(0))
-	if !store.UsernamePattern.MatchString(username) {
-		return fmt.Errorf("username %q must match %s", username, store.UsernamePattern)
+	if !store.ValidUsername(username) {
+		return fmt.Errorf("username %q must match %s and not be reserved", username, store.UsernamePattern)
 	}
 
 	password := os.Getenv("PLURB_PASSWORD")

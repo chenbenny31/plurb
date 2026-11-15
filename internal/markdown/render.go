@@ -36,7 +36,7 @@ func renderEmbed(w util.BufWriter, _ []byte, n ast.Node, entering bool) (ast.Wal
 	w.WriteString(template.HTMLEscapeString(e.title))
 	w.WriteString(`" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" ` +
 		`sandbox="allow-scripts allow-same-origin allow-presentation allow-popups" ` +
-		`allow="fullscreen; picture-in-picture" allowfullscreen></iframe></div>` + "\n")
+		`allow="fullscreen; picture-in-picture"></iframe></div>` + "\n")
 	return ast.WalkSkipChildren, nil
 }
 

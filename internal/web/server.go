@@ -26,6 +26,7 @@ type Server struct {
 	tmpl  templates
 	// static path ("css/main.css") -> content hash for cache busting
 	assetVer map[string]string
+	views    viewCounter
 }
 
 func NewServer(cfg config.Config, log *slog.Logger, db *sql.DB) (*Server, error) {
@@ -63,6 +64,14 @@ func (s *Server) routes(mux *http.ServeMux) {
 	mux.Handle("GET /static/", s.staticFiles())
 
 	mux.HandleFunc("GET /{$}", s.landing)
+
+	mux.HandleFunc("GET /panorama", s.panoramaIndex)
+	mux.HandleFunc("GET /panorama/search", s.search)
+	mux.HandleFunc("GET /panorama/{username}", s.profile)
+	mux.HandleFunc("GET /panorama/{username}/about", s.profile)
+	mux.HandleFunc("GET /panorama/{username}/tag/{tag}", s.authorTag)
+	mux.HandleFunc("GET /panorama/{username}/series/{series}", s.authorSeries)
+	mux.HandleFunc("GET /panorama/{username}/{slug}", s.post)
 
 	mux.HandleFunc("GET /login", s.loginPage)
 	mux.HandleFunc("POST /login", s.login)

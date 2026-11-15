@@ -1,0 +1,22 @@
+{{define "main"}}
+{{$u := .Data.Author}}
+<main class="container">
+    <header class="post-header">
+        <h1>{{.Data.Heading}}</h1>
+        {{with .Data.Note}}<p class="description">{{.}}</p>{{end}}
+    </header>
+
+    {{if .Data.Posts}}
+    <ol class="post-list">
+        {{range .Data.Posts}}
+        <li>
+            <a href="/panorama/{{$u.Username}}/{{.Slug}}">{{.Title}}</a>
+            <span class="date">{{date .PublishedAt}}</span>
+        </li>
+        {{end}}
+    </ol>
+    {{else}}<p>No posts here yet.</p>{{end}}
+
+    <p><a href="/panorama/{{$u.Username}}">← {{$u.DisplayName}}</a></p>
+</main>
+{{end}}

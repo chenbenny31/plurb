@@ -1,0 +1,59 @@
+{{define "main"}}
+{{$p := .Data.Post}}
+<main class="container">
+    {{if .Data.Preview}}
+    <div class="preview-banner">
+        <span>Preview — <strong>draft</strong>. Only you can see this page.</span>
+        <a href="/panorama/editor/{{$p.ID}}">← Back to editor</a>
+    </div>
+    {{end}}
+    <article>
+        <header class="post-header">
+            <h1>{{$p.Title}}</h1>
+            <div class="post-meta">
+                <a href="/panorama/{{$p.AuthorUsername}}">{{$p.AuthorDisplayName}}</a>
+                {{with $p.PublishedAt}}<span>{{date .}}</span>{{end}}
+                <span class="reading-time">{{.Data.Minutes}} min read</span>
+                {{template "tags" $p}}
+            </div>
+            {{with .Data.Series}}
+            <p class="hint">Part of the series <a href="/panorama/{{$p.AuthorUsername}}/series/{{.Slug}}">{{.Title}}</a></p>
+            {{end}}
+        </header>
+
+        {{if ge (len .Data.TOC) 3}}
+        <nav class="toc">
+            <span class="toc-title">Contents</span>
+            <ul>
+                {{range .Data.TOC}}<li class="toc-l{{.Level}}"><a href="#{{.ID}}">{{.Text}}</a></li>{{end}}
+            </ul>
+        </nav>
+        {{end}}
+
+        <div class="post-body">{{.Data.Body}}</div>
+    </article>
+
+    {{if .Data.Related}}
+    <section class="related">
+        <span class="related-title">Related</span>
+        <ul>
+            {{range .Data.Related}}
+            <li><a href="/panorama/{{.AuthorUsername}}/{{.Slug}}">{{.Title}}</a> <span class="related-date">{{date .PublishedAt}}</span></li>
+            {{end}}
+        </ul>
+    </section>
+    {{end}}
+
+    <nav class="post-nav">
+        <div class="post-nav-prev">
+            {{with .Data.Older}}<a href="/panorama/{{.AuthorUsername}}/{{.Slug}}">← {{.Title}}</a>{{end}}
+        </div>
+        <div class="post-nav-center">
+            <a href="/panorama/{{$p.AuthorUsername}}">{{$p.AuthorDisplayName}}</a>
+        </div>
+        <div class="post-nav-next">
+            {{with .Data.Newer}}<a href="/panorama/{{.AuthorUsername}}/{{.Slug}}">{{.Title}} →</a>{{end}}
+        </div>
+    </nav>
+</main>
+{{end}}

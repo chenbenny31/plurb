@@ -98,8 +98,8 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) {
 		f.Error = msg
 		s.render(w, r, http.StatusUnprocessableEntity, "signup", s.newView(r, "Sign up", f))
 	}
-	if !store.UsernamePattern.MatchString(f.Username) {
-		fail("Username must be 3–32 characters: lowercase letters, digits or _.")
+	if !store.ValidUsername(f.Username) {
+		fail("Username must be 3–32 characters (lowercase letters, digits or _) and not a reserved word.")
 		return
 	}
 	if f.DisplayName == "" {
@@ -235,7 +235,7 @@ func (s *Server) createGitHubUser(r *http.Request, gu *auth.GitHubUser) (*store.
 	}
 	for i := 1; i <= 50; i++ {
 		name := base
-		if i > 1 {
+		if i > 1 || !store.ValidUsername(name) {
 			name = base + strconv.Itoa(i)
 		}
 		u, err := s.store.CreateUserWithIdentity(r.Context(), name, display, "github", gu.Subject(), gu.Login)

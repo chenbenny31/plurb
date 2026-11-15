@@ -1,0 +1,46 @@
+{{define "main"}}
+{{$u := .Data.Author}}
+<main class="container">
+    <section class="profile-header">
+        <h1>{{$u.DisplayName}}</h1>
+        <p class="username">@{{$u.Username}}</p>
+        <a class="rss-link" href="/panorama/{{$u.Username}}/feed.xml">RSS</a>
+    </section>
+
+    <div class="profile-tabs">
+        <a class="tab-btn{{if eq .Data.Tab "posts"}} tab-active{{end}}" href="/panorama/{{$u.Username}}">Posts</a>
+        <a class="tab-btn{{if eq .Data.Tab "about"}} tab-active{{end}}" href="/panorama/{{$u.Username}}/about">About</a>
+    </div>
+
+    <div class="tab-content">
+    {{if eq .Data.Tab "about"}}
+        {{if .Data.About}}<div class="post-body">{{.Data.About}}</div>{{else}}<p>Nothing here yet.</p>{{end}}
+    {{else}}
+        {{if .Data.Series}}
+        <section>
+            <h2>Series</h2>
+            <ul class="series-list">
+                {{range .Data.Series}}
+                <li><a href="/panorama/{{$u.Username}}/series/{{.Slug}}">{{.Title}}</a> <span class="hint">{{.PostCount}} posts</span></li>
+                {{end}}
+            </ul>
+        </section>
+        {{end}}
+        <section>
+            <h2>Posts</h2>
+            {{if .Data.Posts}}
+            <ul class="post-list">
+                {{range .Data.Posts}}
+                <li>
+                    <a href="/panorama/{{$u.Username}}/{{.Slug}}">{{.Title}}</a>
+                    <span class="date">{{date .PublishedAt}}</span>
+                    {{template "tags" .}}
+                </li>
+                {{end}}
+            </ul>
+            {{else}}<p>No posts yet.</p>{{end}}
+        </section>
+    {{end}}
+    </div>
+</main>
+{{end}}

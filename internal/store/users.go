@@ -21,6 +21,16 @@ func (u *User) IsAdmin() bool { return u != nil && u.Role == "admin" }
 // UsernamePattern mirrors the CHECK constraint on users.username.
 var UsernamePattern = regexp.MustCompile(`^[a-z0-9_]{3,32}$`)
 
+// reserved names collide with routes like /panorama/search or /panorama/editor.
+var reserved = map[string]bool{
+	"admin": true, "api": true, "auth": true, "editor": true, "feed": true,
+	"forum": true, "login": true, "logout": true, "search": true, "signup": true,
+	"static": true, "settings": true, "sitemap": true, "panorama": true, "plurb": true,
+}
+
+// ValidUsername reports whether name is well-formed and not reserved.
+func ValidUsername(name string) bool { return UsernamePattern.MatchString(name) && !reserved[name] }
+
 const userCols = `id, username, display_name, password_hash, about_md, role, created_at`
 
 func scanUser(row interface{ Scan(...any) error }) (*User, error) {

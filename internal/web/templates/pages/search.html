@@ -1,0 +1,28 @@
+{{define "main"}}
+<main class="container">
+    <h1>Search</h1>
+    <form class="search-form" action="/panorama/search" method="get">
+        <input type="search" name="q" class="search-input" placeholder="search posts…" value="{{.Data.Q}}" autofocus>
+        <button type="submit" class="button">Search</button>
+    </form>
+
+    {{if .Data.Ran}}
+    <p class="search-count">
+        {{with .Data.Results}}{{len .}} result(s){{else}}No results{{end}} for “{{.Data.Q}}”.
+    </p>
+    <div class="post-list">
+        {{range .Data.Results}}
+        <div class="post-list-item">
+            <h2><a href="/panorama/{{.AuthorUsername}}/{{.Slug}}">{{.Title}}</a></h2>
+            <div class="post-meta">
+                <a href="/panorama/{{.AuthorUsername}}">{{.AuthorDisplayName}}</a>
+                <span>{{date .PublishedAt}}</span>
+                {{template "tags" .}}
+            </div>
+            {{with .Description}}<p class="description">{{.}}</p>{{end}}
+        </div>
+        {{end}}
+    </div>
+    {{end}}
+</main>
+{{end}}

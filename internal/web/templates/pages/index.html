@@ -1,0 +1,73 @@
+{{define "main"}}
+<main class="container-index">
+    <div class="index-layout">
+        <div class="index-main">
+            {{if .Data.Posts}}
+            <div class="post-grid">
+                {{range .Data.Posts}}
+                <div class="post-card">
+                    {{if .CoverURL}}
+                    <div class="post-card-cover">
+                        <a href="/panorama/{{.AuthorUsername}}/{{.Slug}}">
+                            <img src="{{.CoverURL}}" alt="" loading="lazy" referrerpolicy="no-referrer">
+                        </a>
+                    </div>
+                    {{end}}
+                    <div class="post-card-body">
+                        <h2><a href="/panorama/{{.AuthorUsername}}/{{.Slug}}">{{.Title}}</a></h2>
+                        <div class="post-meta">
+                            <a href="/panorama/{{.AuthorUsername}}">{{.AuthorDisplayName}}</a>
+                            <span>{{date .PublishedAt}}</span>
+                        </div>
+                        <div class="post-tags">{{template "tags" .}}</div>
+                        {{with .Description}}<p class="description">{{.}}</p>{{end}}
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            {{else}}
+            <p>No posts yet.</p>
+            {{end}}
+
+            {{if gt (len .Data.Pages) 1}}
+            <div class="pagination">
+                {{$tag := .Data.ActiveTag}}{{$cur := .Data.Page}}
+                {{with .Data.PrevPage}}<a class="page-btn" href="/panorama?page={{.}}{{with $tag}}&amp;tag={{.}}{{end}}">← prev</a>{{end}}
+                {{range .Data.Pages}}
+                <a class="page-btn{{if eq . $cur}} page-active{{end}}" href="/panorama?page={{.}}{{with $tag}}&amp;tag={{.}}{{end}}">{{.}}</a>
+                {{end}}
+                {{with .Data.NextPage}}<a class="page-btn" href="/panorama?page={{.}}{{with $tag}}&amp;tag={{.}}{{end}}">next →</a>{{end}}
+            </div>
+            {{end}}
+        </div>
+
+        <aside class="index-sidebar">
+            {{if .Data.Tags}}
+            <div class="sidebar-section">
+                <h3>Tags</h3>
+                <div class="tag-cloud">
+                    {{$active := .Data.ActiveTag}}
+                    {{range .Data.Tags}}
+                    <a class="tag{{if eq .Slug $active}} tag-active{{end}}" href="/panorama?tag={{.Slug}}">{{.Name}}</a>
+                    {{end}}
+                    {{if $active}}<a class="tag" href="/panorama">× clear</a>{{end}}
+                </div>
+            </div>
+            {{end}}
+            {{if .Data.Series}}
+            <div class="sidebar-section">
+                <h3>Series</h3>
+                <ul class="sidebar-list">
+                    {{range .Data.Series}}
+                    <li><a href="/panorama/{{.AuthorUsername}}/series/{{.Slug}}">{{.Title}}</a></li>
+                    {{end}}
+                </ul>
+            </div>
+            {{end}}
+            <div class="sidebar-section">
+                <a class="rss-link" href="/panorama/feed.xml">RSS</a>
+            </div>
+        </aside>
+    </div>
+</main>
+{{end}}
