@@ -1,0 +1,26 @@
+{{define "main"}}
+<main class="container">
+    <h1>Edit profile</h1>
+    {{with .Data.Error}}<p class="error">{{.}}</p>{{end}}
+    {{if .Data.Saved}}<p class="success">Saved. <a href="/panorama/{{.User.Username}}/about">View</a></p>{{end}}
+    <form action="/panorama/editor/about" method="post" class="edit-form">
+        <div class="form-group">
+            <label for="display_name">Display name</label>
+            <input type="text" id="display_name" name="display_name" value="{{.Data.DisplayName}}" maxlength="64" required>
+        </div>
+        <div class="form-group">
+            <div class="editor-label-row">
+                <label for="body">About <span class="hint">(markdown)</span></label>
+                <button type="button" id="previewToggle" class="chip">Preview</button>
+            </div>
+            <textarea id="body" name="about" rows="20">{{.Data.About}}</textarea>
+            <div id="bodyPreview" class="body-preview post-body" hidden></div>
+        </div>
+        <div class="form-actions">
+            <button type="submit">Save</button>
+            <a href="/panorama/editor">Back to dashboard</a>
+        </div>
+    </form>
+</main>
+<script src="{{asset "js/editor.js"}}" defer></script>
+{{end}}

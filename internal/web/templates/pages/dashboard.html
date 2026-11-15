@@ -1,0 +1,56 @@
+{{define "main"}}
+{{$u := .User}}
+<main class="container">
+    <div class="dashboard-header">
+        <h1>Dashboard</h1>
+        <div class="dashboard-actions">
+            <a class="button" href="/panorama/editor/new">New post</a>
+            <a class="button button-ghost" href="/panorama/editor/about">Edit profile</a>
+            <a class="button button-ghost" href="/panorama/editor/export">Export</a>
+        </div>
+    </div>
+
+    <section>
+        <h2>Posts</h2>
+        {{if .Data.Posts}}
+        <table class="post-table">
+            <thead><tr><th>Title</th><th>Status</th><th>Views</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+            {{range .Data.Posts}}
+            <tr>
+                <td><a href="/panorama/{{$u.Username}}/{{.Slug}}">{{.Title}}</a></td>
+                <td>{{.Status}}</td>
+                <td>{{.ViewCount}}</td>
+                <td>{{if .PublishedAt}}{{date .PublishedAt}}{{else}}{{date .CreatedAt}}{{end}}</td>
+                <td class="actions">
+                    <a href="/panorama/editor/posts/{{.ID}}">Edit</a>
+                    <form action="/panorama/editor/posts/{{.ID}}/publish" method="post" class="inline-form">
+                        <button type="submit" class="link-button">{{if .Published}}Unpublish{{else}}Publish{{end}}</button>
+                    </form>
+                    <form action="/panorama/editor/posts/{{.ID}}/delete" method="post" class="inline-form"
+                          data-confirm="Delete “{{.Title}}”? This can't be undone.">
+                        <button type="submit" class="link-button link-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p>No posts yet. <a href="/panorama/editor/new">Write one.</a></p>
+        {{end}}
+    </section>
+
+    {{if .Data.Series}}
+    <section>
+        <h2>Series</h2>
+        <ul class="series-list">
+            {{range .Data.Series}}
+            <li><a href="/panorama/{{$u.Username}}/series/{{.Slug}}">{{.Title}}</a> <span class="hint">{{.PostCount}} posts</span></li>
+            {{end}}
+        </ul>
+    </section>
+    {{end}}
+</main>
+<script src="{{asset "js/editor.js"}}" defer></script>
+{{end}}

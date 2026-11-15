@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	afterLogin  = "/"
+	afterLogin  = "/panorama/editor"
 	oauthCookie = "plurb_oauth_state"
 )
 

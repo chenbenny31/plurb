@@ -1,0 +1,71 @@
+{{define "main"}}
+{{$f := .Data.Form}}
+<main class="container">
+    <h1>{{if .Data.PostID}}Edit post{{else}}New post{{end}}</h1>
+    {{with .Data.Error}}<p class="error">{{.}}</p>{{end}}
+    {{if .Data.Saved}}<p class="success">Saved.</p>{{end}}
+
+    <form action="{{if .Data.PostID}}/panorama/editor/posts/{{.Data.PostID}}{{else}}/panorama/editor/new{{end}}"
+          method="post" class="edit-form">
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" value="{{$f.Title}}" maxlength="200" required>
+        </div>
+
+        <div class="form-group">
+            <label for="slug">Slug <span class="hint">(optional — generated from the title if blank)</span></label>
+            <input type="text" id="slug" name="slug" value="{{$f.Slug}}" maxlength="120" pattern="[a-z0-9]+(-[a-z0-9]+)*">
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description <span class="hint">(one-line summary)</span></label>
+            <input type="text" id="description" name="description" value="{{$f.Description}}" maxlength="300">
+        </div>
+
+        <div class="form-group">
+            <label for="cover_url">Cover image URL <span class="hint">(https link — plurb never stores images)</span></label>
+            <input type="text" id="cover_url" name="cover_url" value="{{$f.CoverURL}}" placeholder="https://…">
+        </div>
+
+        <div class="form-group">
+            <label for="series">Series <span class="hint">(optional — a new title creates the series)</span></label>
+            <input type="text" id="series" name="series" value="{{$f.SeriesTitle}}" autocomplete="off" placeholder="e.g. Go Internals">
+            {{with .Data.Series}}
+            <div class="chips">{{range .}}<button type="button" class="chip" data-fill="series" data-value="{{.Title}}">{{.Title}}</button>{{end}}</div>
+            {{end}}
+        </div>
+
+        <div class="form-group">
+            <label for="series_description">Series description <span class="hint">(optional)</span></label>
+            <input type="text" id="series_description" name="series_description" value="{{$f.SeriesDescription}}" maxlength="300">
+        </div>
+
+        <div class="form-group">
+            <label for="tags">Tags <span class="hint">(space separated, up to 10)</span></label>
+            <input type="text" id="tags" name="tags" value="{{$f.Tags}}" autocomplete="off" placeholder="e.g. go concurrency">
+            {{with .Data.AuthorTags}}
+            <div class="chips">{{range .}}<button type="button" class="chip" data-append="tags" data-value="{{.Name}}">{{.Name}}</button>{{end}}</div>
+            {{end}}
+        </div>
+
+        <div class="form-group">
+            <div class="editor-label-row">
+                <label for="body">Content <span class="hint">(markdown; link images/videos by URL)</span></label>
+                <button type="button" id="previewToggle" class="chip">Preview</button>
+            </div>
+            <textarea id="body" name="body" rows="30">{{$f.Body}}</textarea>
+            <div id="bodyPreview" class="body-preview post-body" hidden></div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" name="action" value="save">{{if eq .Data.Status "published"}}Save{{else}}Save draft{{end}}</button>
+            {{if ne .Data.Status "published"}}
+            <button type="submit" name="action" value="publish" class="button-ghost">Save &amp; publish</button>
+            {{end}}
+            {{if .Data.PostID}}<a href="/panorama/{{.User.Username}}/{{$f.Slug}}" target="_blank" rel="noopener">View page</a>{{end}}
+            <a href="/panorama/editor">Back to dashboard</a>
+        </div>
+    </form>
+</main>
+<script src="{{asset "js/editor.js"}}" defer></script>
+{{end}}

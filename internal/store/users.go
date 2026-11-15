@@ -134,3 +134,10 @@ func (s *Store) CreateUserWithIdentity(ctx context.Context, username, displayNam
 	}
 	return u, tx.Commit()
 }
+
+func (s *Store) HasIdentity(ctx context.Context, userID int64, provider string) (bool, error) {
+	var ok bool
+	err := s.db.QueryRowContext(ctx, `SELECT EXISTS (
+		SELECT 1 FROM user_identities WHERE user_id = $1 AND provider = $2)`, userID, provider).Scan(&ok)
+	return ok, err
+}

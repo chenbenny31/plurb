@@ -65,6 +65,21 @@ func (s *Server) routes(mux *http.ServeMux) {
 
 	mux.HandleFunc("GET /{$}", s.landing)
 
+	ed := func(pattern string, h http.HandlerFunc) { mux.HandleFunc(pattern, s.requireUser(h)) }
+	ed("GET /panorama/editor", s.dashboard)
+	ed("GET /panorama/editor/new", s.newPostPage)
+	ed("POST /panorama/editor/new", s.createPost)
+	ed("POST /panorama/editor/preview", s.previewMarkdown)
+	ed("GET /panorama/editor/about", s.aboutPage)
+	ed("POST /panorama/editor/about", s.saveAbout)
+	ed("GET /panorama/editor/account", s.accountPage)
+	ed("POST /panorama/editor/account/username", s.changeUsername)
+	ed("POST /panorama/editor/account/password", s.changePassword)
+	ed("GET /panorama/editor/posts/{id}", s.editPostPage)
+	ed("POST /panorama/editor/posts/{id}", s.updatePost)
+	ed("POST /panorama/editor/posts/{id}/publish", s.togglePublish)
+	ed("POST /panorama/editor/posts/{id}/delete", s.deletePost)
+
 	mux.HandleFunc("GET /panorama", s.panoramaIndex)
 	mux.HandleFunc("GET /panorama/search", s.search)
 	mux.HandleFunc("GET /panorama/{username}", s.profile)

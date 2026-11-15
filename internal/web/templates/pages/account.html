@@ -1,0 +1,61 @@
+{{define "main"}}
+<main class="container">
+    <h1>Account</h1>
+
+    <section class="account-section">
+        <h2>Username</h2>
+        {{with .Data.UsernameError}}<p class="error">{{.}}</p>{{end}}
+        <form action="/panorama/editor/account/username" method="post">
+            <div class="form-group">
+                <label for="username">New username</label>
+                <input type="text" id="username" name="username" value="{{.User.Username}}"
+                       pattern="[a-z0-9_]{3,32}" autocomplete="username" required>
+            </div>
+            {{if .Data.HasPassword}}
+            <div class="form-group">
+                <label for="username_password">Current password <span class="hint">(to confirm)</span></label>
+                <input type="password" id="username_password" name="password" autocomplete="current-password" required>
+            </div>
+            {{end}}
+            <button type="submit">Change username</button>
+        </form>
+        <p class="hint form-note">Your post URLs change with your username.</p>
+    </section>
+
+    <section class="account-section">
+        <h2>Password</h2>
+        {{with .Data.PasswordError}}<p class="error">{{.}}</p>{{end}}
+        {{if .Data.PasswordChanged}}<p class="success">Password changed. Other devices were signed out.</p>{{end}}
+        <form action="/panorama/editor/account/password" method="post">
+            {{if .Data.HasPassword}}
+            <div class="form-group">
+                <label for="old_password">Current password</label>
+                <input type="password" id="old_password" name="old_password" autocomplete="current-password" required>
+            </div>
+            {{end}}
+            <div class="form-group">
+                <label for="new_password">{{if .Data.HasPassword}}New password{{else}}Set a password{{end}} <span class="hint">(10+ characters)</span></label>
+                <input type="password" id="new_password" name="new_password" minlength="10" autocomplete="new-password" required>
+            </div>
+            <button type="submit">{{if .Data.HasPassword}}Change password{{else}}Set password{{end}}</button>
+        </form>
+    </section>
+
+    {{if .GitHub}}
+    <section class="account-section">
+        <h2>GitHub</h2>
+        {{if .Data.GitHubLinked}}
+        <p>GitHub login is linked to this account.</p>
+        {{else}}
+        <a class="button button-ghost" href="/auth/github">Link GitHub login</a>
+        {{end}}
+    </section>
+    {{end}}
+
+    <section class="account-section account-danger">
+        <form action="/logout" method="post">
+            <button type="submit" class="btn-danger">Log out</button>
+        </form>
+    </section>
+</main>
+{{end}}

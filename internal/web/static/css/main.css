@@ -808,3 +808,10 @@ button.nav-btn { font-weight: normal; }
 
 /* chroma-highlighted code keeps the post-body pre frame */
 .post-body pre.chroma, .body-preview pre.chroma { padding: 1.25rem; }
+[hidden] { display: none !important; }
+.inline-form { display: inline; }
+.link-danger { color: var(--danger); }
+.form-note { margin-top: 0.75rem; }
+.link-button { font-family: inherit; font-weight: normal; }
+.nav-btn { white-space: nowrap; }
+@media (max-width: 1100px) { .nav-tagline { display: none; } }
