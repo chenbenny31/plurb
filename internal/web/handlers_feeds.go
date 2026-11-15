@@ -83,7 +83,7 @@ func (s *Server) writeFeed(w http.ResponseWriter, r *http.Request, title, link, 
 		SelfLink: atomLink{Href: s.cfg.BaseURL + self, Rel: "self", Type: "application/rss+xml"},
 	}
 	for i, p := range posts {
-		out, err := s.md.Render(p.BodyMD)
+		out, err := s.renderPost(r.Context(), p)
 		if err != nil {
 			s.serverError(w, r, err)
 			return
@@ -184,7 +184,9 @@ func (s *Server) exportPosts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
 	zw := zip.NewWriter(w)
 	for _, p := range posts {
-		f, err := zw.Create(p.Slug + ".md")
+		f, err := zw.CreateHeader(&zip.FileHeader{
+			Name: p.Slug + ".md", Method: zip.Deflate, Modified: p.UpdatedAt,
+		})
 		if err != nil {
 			s.log.Error("export", "err", err)
 			return

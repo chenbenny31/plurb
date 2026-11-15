@@ -17,8 +17,10 @@ import (
 	"time"
 
 	"github.com/chenbenny31/plurb/internal/auth"
+	"github.com/chenbenny31/plurb/internal/cache"
 	"github.com/chenbenny31/plurb/internal/config"
 	"github.com/chenbenny31/plurb/internal/db"
+	"github.com/chenbenny31/plurb/internal/legacy"
 	"github.com/chenbenny31/plurb/internal/store"
 	"github.com/chenbenny31/plurb/internal/web"
 )
@@ -30,7 +32,12 @@ commands:
   migrate  apply pending migrations and exit
   createuser [-admin] [-name "Display Name"] <username>
            create an account; the password is read from PLURB_PASSWORD
-           or the first line of stdin`
+           or the first line of stdin
+  passwd <username>
+           set a user's password (same input rules as createuser)
+  import-legacy -from <old-database-url>
+           copy users, posts, tags and series from the old Java plurb
+           database into this (empty) one`
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -61,6 +68,10 @@ func run(args []string) error {
 		return pool.Close()
 	case "createuser":
 		return createUser(cfg, log, args)
+	case "passwd":
+		return setPassword(cfg, log, args)
+	case "import-legacy":
+		return importLegacy(cfg, log, args)
 	case "help", "-h", "--help":
 		fmt.Println(usage)
 		return nil
@@ -95,11 +106,36 @@ func serve(cfg config.Config, log *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	app, err := web.NewServer(cfg, log, pool)
+	kv := cache.NewMemory()
+	if cfg.RedisURL != "" {
+		be, rdb, err := cache.NewRedis(ctx, cfg.RedisURL, "plurb:")
+		if err != nil {
+			return fmt.Errorf("redis: %w", err)
+		}
+		defer rdb.Close()
+		kv = be
+	}
+	log.Info("cache backend", "kind", kv.Name)
+
+	app, err := web.NewServer(cfg, log, pool, kv)
 	if err != nil {
 		return err
 	}
 	go purgeSessions(ctx, store.New(pool), log)
+
+	// Flush buffered view counts every 30s, and once more on shutdown.
+	viewsDone := make(chan struct{})
+	go func() {
+		defer close(viewsDone)
+		kv.Views.Run(ctx, 30*time.Second, func(c context.Context, counts map[int64]int64) error {
+			err := app.FlushViews(c, counts)
+			if err != nil {
+				log.Error("flush views", "err", err)
+			}
+			return err
+		})
+	}()
+	defer func() { <-viewsDone }()
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
@@ -163,16 +199,7 @@ func createUser(cfg config.Config, log *slog.Logger, args []string) error {
 		return fmt.Errorf("username %q must match %s and not be reserved", username, store.UsernamePattern)
 	}
 
-	password := os.Getenv("PLURB_PASSWORD")
-	if password == "" {
-		fmt.Fprint(os.Stderr, "password: ")
-		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
-		if err != nil && line == "" {
-			return fmt.Errorf("read password: %w", err)
-		}
-		password = strings.TrimRight(line, "\r\n")
-	}
-	hash, err := auth.Hash(password)
+	hash, err := readPasswordHash()
 	if err != nil {
 		return err
 	}
@@ -197,5 +224,81 @@ func createUser(cfg config.Config, log *slog.Logger, args []string) error {
 		return err
 	}
 	log.Info("created user", "id", u.ID, "username", u.Username, "role", u.Role)
+	return nil
+}
+
+// readPasswordHash reads a password from PLURB_PASSWORD or stdin and hashes it.
+func readPasswordHash() (string, error) {
+	password := os.Getenv("PLURB_PASSWORD")
+	if password == "" {
+		fmt.Fprint(os.Stderr, "password: ")
+		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err != nil && line == "" {
+			return "", fmt.Errorf("read password: %w", err)
+		}
+		password = strings.TrimRight(line, "\r\n")
+	}
+	return auth.Hash(password)
+}
+
+func setPassword(cfg config.Config, log *slog.Logger, args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: plurb passwd <username>")
+	}
+	hash, err := readPasswordHash()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	pool, err := openAndMigrate(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	st := store.New(pool)
+	u, err := st.UserByUsername(ctx, strings.ToLower(args[0]))
+	if err != nil {
+		return fmt.Errorf("user %q: %w", args[0], err)
+	}
+	if err := st.UpdatePassword(ctx, u.ID, hash); err != nil {
+		return err
+	}
+	if err := st.DeleteUserSessions(ctx, u.ID); err != nil {
+		return err
+	}
+	log.Info("password updated; existing sessions signed out", "username", u.Username)
+	return nil
+}
+
+func importLegacy(cfg config.Config, log *slog.Logger, args []string) error {
+	fs := flag.NewFlagSet("import-legacy", flag.ContinueOnError)
+	from := fs.String("from", "", "connection URL of the old Java plurb database")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *from == "" {
+		return errors.New("usage: plurb import-legacy -from <old-database-url>")
+	}
+	ctx := context.Background()
+	old, err := db.Open(ctx, *from)
+	if err != nil {
+		return fmt.Errorf("old database: %w", err)
+	}
+	defer old.Close()
+	pool, err := openAndMigrate(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	rep, err := legacy.Import(ctx, old, pool)
+	if err != nil {
+		return err
+	}
+	for _, w := range rep.Warnings {
+		log.Warn(w)
+	}
+	log.Info("import done", "users", rep.Users, "posts", rep.Posts, "tags", rep.Tags, "series", rep.Series)
+	log.Info("imported accounts have no password yet: run `plurb passwd <username>`")
 	return nil
 }

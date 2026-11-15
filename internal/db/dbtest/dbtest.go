@@ -22,7 +22,18 @@ import (
 	"github.com/chenbenny31/plurb/internal/db"
 )
 
+// New returns a pool on a fresh, fully migrated schema.
 func New(t *testing.T) *sql.DB {
+	t.Helper()
+	pool := Empty(t)
+	if _, err := db.Migrate(context.Background(), pool); err != nil {
+		t.Fatal(err)
+	}
+	return pool
+}
+
+// Empty returns a pool on a fresh schema with no tables.
+func Empty(t *testing.T) *sql.DB {
 	t.Helper()
 	raw := os.Getenv("PLURB_TEST_DATABASE_URL")
 	if raw == "" {
@@ -72,8 +83,5 @@ func New(t *testing.T) *sql.DB {
 			a.Close()
 		}
 	})
-	if _, err := db.Migrate(ctx, pool); err != nil {
-		t.Fatal(err)
-	}
 	return pool
 }

@@ -1,0 +1,32 @@
+[Unit]
+Description=plurb web server
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=plurb
+Group=plurb
+EnvironmentFile=/etc/plurb/plurb.env
+ExecStart=/opt/plurb/plurb serve
+Restart=on-failure
+RestartSec=2s
+
+# The binary is self-contained (templates and assets are embedded) and
+# writes nothing to disk, so lock the filesystem down.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
