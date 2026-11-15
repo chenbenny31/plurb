@@ -79,6 +79,12 @@ func (s *Server) routes(mux *http.ServeMux) {
 	ed("POST /panorama/editor/posts/{id}", s.updatePost)
 	ed("POST /panorama/editor/posts/{id}/publish", s.togglePublish)
 	ed("POST /panorama/editor/posts/{id}/delete", s.deletePost)
+	ed("GET /panorama/editor/export", s.exportPosts)
+
+	mux.HandleFunc("GET /panorama/feed.xml", s.globalFeed)
+	mux.HandleFunc("GET /panorama/{username}/feed.xml", s.authorFeed)
+	mux.HandleFunc("GET /sitemap.xml", s.sitemap)
+	mux.HandleFunc("GET /robots.txt", s.robots)
 
 	mux.HandleFunc("GET /panorama", s.panoramaIndex)
 	mux.HandleFunc("GET /panorama/search", s.search)
