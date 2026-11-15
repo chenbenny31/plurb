@@ -1,0 +1,25 @@
+{{define "main"}}
+<main class="container">
+    <div class="login-box">
+        <h1>Log in</h1>
+        {{with .Data.Error}}<div class="error">{{.}}</div>{{end}}
+        <form action="/login" method="post">
+            <input type="hidden" name="next" value="{{.Data.Next}}">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" value="{{.Data.Username}}"
+                       autocomplete="username" autofocus required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" autocomplete="current-password" required>
+            </div>
+            <button type="submit">Log in</button>
+        </form>
+        {{if .GitHub}}
+        <p class="login-alt"><a class="button button-ghost" href="/auth/github">Continue with GitHub</a></p>
+        {{end}}
+        {{if .OpenSignup}}<p class="hint login-alt">No account? <a href="/signup">Sign up</a></p>{{end}}
+    </div>
+</main>
+{{end}}

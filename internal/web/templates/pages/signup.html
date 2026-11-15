@@ -1,0 +1,31 @@
+{{define "main"}}
+<main class="container">
+    <div class="login-box">
+        <h1>Sign up</h1>
+        {{with .Data.Error}}<div class="error">{{.}}</div>{{end}}
+        <form action="/signup" method="post">
+            <div class="form-group">
+                <label for="username">Username <span class="hint">(a–z, 0–9, _)</span></label>
+                <input type="text" id="username" name="username" value="{{.Data.Username}}"
+                       pattern="[a-z0-9_]{3,32}" autocomplete="username" autofocus required>
+            </div>
+            <div class="form-group">
+                <label for="display_name">Display name</label>
+                <input type="text" id="display_name" name="display_name" value="{{.Data.DisplayName}}" maxlength="64">
+            </div>
+            <div class="form-group">
+                <label for="password">Password <span class="hint">(10+ characters)</span></label>
+                <input type="password" id="password" name="password" minlength="10" autocomplete="new-password" required>
+            </div>
+            <div class="form-group">
+                <label for="password_confirm">Confirm password</label>
+                <input type="password" id="password_confirm" name="password_confirm" autocomplete="new-password" required>
+            </div>
+            <button type="submit">Create account</button>
+        </form>
+        {{if .GitHub}}
+        <p class="login-alt"><a class="button button-ghost" href="/auth/github">Sign up with GitHub</a></p>
+        {{end}}
+    </div>
+</main>
+{{end}}
