@@ -31,7 +31,7 @@
     <div class="comment-main">
         <header class="post-meta">
             <a href="/panorama/{{.AuthorUsername}}">{{.AuthorDisplayName}}</a>
-            <span class="pill pill-sky">{{.AuthorReputation}} rep</span>
+            {{template "lv" .AuthorReputation}}
             {{if eq .AuthorID $p.Thread.AuthorID}}<span class="pill pill-brand">OP</span>{{end}}
             <a class="date" href="#c{{.ID}}">{{ago .CreatedAt}}</a>
         </header>
@@ -72,7 +72,7 @@
                 <div class="post-meta">
                     {{avatar $t.AuthorUsername $t.AuthorDisplayName}}
                     <a href="/panorama/{{$t.AuthorUsername}}">{{$t.AuthorDisplayName}}</a>
-                    <span class="pill pill-sky">{{$t.AuthorReputation}} rep</span>
+                    {{template "lv" $t.AuthorReputation}}
                     <span class="date">{{ago $t.CreatedAt}}</span>
                 </div>
                 {{if $t.BodyMD}}<div class="post-body thread-body">{{.Data.Body}}</div>{{end}}

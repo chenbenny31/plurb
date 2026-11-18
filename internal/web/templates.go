@@ -88,6 +88,7 @@ func (s *Server) newView(r *http.Request, title string, data any) *view {
 		GitHub:     s.gh != nil,
 		Data:       data,
 	}
+	s.refreshLevels(r.Context())
 	if v.User != nil {
 		if n, err := s.store.UnreadCount(r.Context(), v.User.ID); err == nil {
 			v.Unread = n

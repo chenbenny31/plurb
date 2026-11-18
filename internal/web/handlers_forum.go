@@ -346,16 +346,23 @@ func sign(f float64) float64 {
 // ---- reputation history ----
 
 type repPage struct {
-	Events []store.RepEvent
+	Events     []store.RepEvent
+	TopPercent int // 0 when the user has no reputation yet
 }
 
 func (s *Server) repHistory(w http.ResponseWriter, r *http.Request) {
-	events, err := s.store.RepHistory(r.Context(), currentUser(r).ID, 100)
+	u := currentUser(r)
+	events, err := s.store.RepHistory(r.Context(), u.ID, 100)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
-	v := s.newView(r, "Reputation", repPage{events})
+	top, err := s.store.RepTopPercent(r.Context(), u.Reputation)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	v := s.newView(r, "Reputation", repPage{Events: events, TopPercent: top})
 	v.Section = "forum"
 	s.render(w, r, http.StatusOK, "rep_history", v)
 }

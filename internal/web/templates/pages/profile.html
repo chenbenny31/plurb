@@ -5,7 +5,7 @@
         {{avatar $u.Username $u.DisplayName}}
         <div>
             <h1>{{$u.DisplayName}}</h1>
-            <p class="username">@{{$u.Username}} <span class="pill pill-brand">{{$u.Reputation}} rep</span>
+            <p class="username">@{{$u.Username}} {{template "lv" $u.Reputation}}
                 <a class="rss-link" href="/panorama/{{$u.Username}}/feed.xml">RSS</a></p>
         </div>
     </section>

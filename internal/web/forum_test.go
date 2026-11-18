@@ -117,7 +117,7 @@ func TestForumVoting(t *testing.T) {
 	_, page = a.get("/forum/reputation")
 	mustContain(t, page, "upvote_received", "vote_retracted")
 	_, page = a.get("/panorama/alice")
-	mustContain(t, page, `@alice <span class="pill pill-brand">5 rep</span>`) // bob's +5 retracted, carol's +5 stands
+	mustContain(t, page, `@alice <span class="lv lv-1"`) // 5 points: floor caps the level at 1
 }
 
 func TestForumHotOrdering(t *testing.T) {

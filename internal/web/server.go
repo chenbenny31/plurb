@@ -28,6 +28,7 @@ type Server struct {
 	gh    *auth.GitHub // nil when GitHub login isn't configured
 	kv    *cache.Backend
 	hub   *notify.Hub
+	lv    levelCache
 	// closed on shutdown so open SSE streams return
 	streamsClosed chan struct{}
 	closeOnce     sync.Once
@@ -46,7 +47,12 @@ func NewServer(cfg config.Config, log *slog.Logger, db *sql.DB, kv *cache.Backen
 	if s.assetVer, err = assetVersions(); err != nil {
 		return nil, err
 	}
-	if s.tmpl, err = loadTemplates(templateFuncs(s.assetURL)); err != nil {
+	s.lv.ttl = levelsTTL
+	funcs := templateFuncs(s.assetURL)
+	for name, fn := range s.levelFuncs() {
+		funcs[name] = fn
+	}
+	if s.tmpl, err = loadTemplates(funcs); err != nil {
 		return nil, err
 	}
 	return s, nil

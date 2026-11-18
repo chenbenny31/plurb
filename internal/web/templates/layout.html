@@ -39,7 +39,7 @@
                     <div class="menu-panel">
                         <div class="menu-head">
                             <strong>{{.User.DisplayName}}</strong>
-                            <span class="muted">@{{.User.Username}} · {{.User.Reputation}} rep</span>
+                            <span class="muted">@{{.User.Username}} · {{levelName .User.Reputation}}</span>
                         </div>
                         <a href="/notifications">Inbox{{if .Unread}} <span class="badge">{{.Unread}}</span>{{end}}</a>
                         <a href="/panorama/{{.User.Username}}">Your profile</a>
@@ -71,6 +71,9 @@
 </body>
 </html>
 {{end}}
+
+{{/* Reputation is shown as a level (where it sits in the distribution), never raw points. */}}
+{{define "lv"}}<span class="lv lv-{{level .}}" title="{{levelName .}}: {{levelBand .}}">{{levelName .}}</span>{{end}}
 
 {{/* Tag chips for a post; tags link to the author's tag page. */}}
 {{define "tags"}}{{$u := .AuthorUsername}}{{range .Tags}}<a class="tag" href="/panorama/{{$u}}/tag/{{.Slug}}">{{.Name}}</a>{{end}}{{end}}

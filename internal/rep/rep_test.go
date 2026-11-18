@@ -55,3 +55,31 @@ func TestHotPrefersNewerAtEqualScore(t *testing.T) {
 		t.Error("higher score should rank higher at equal age")
 	}
 }
+
+func TestLevels(t *testing.T) {
+	// 100 users: cuts at the 50th/80th/95th/99th percentile.
+	l := Levels{Cuts: [4]int{20, 120, 400, 900}, Users: 100}
+	cases := []struct{ rep, want int }{
+		{0, 0}, {-5, 0},
+		{1, 1}, {19, 1},
+		{20, 2}, {119, 2},
+		{120, 3}, {399, 3},
+		{400, 4}, {899, 4},
+		{900, 5}, {5000, 5},
+	}
+	for _, c := range cases {
+		if got := l.Of(c.rep); got != c.want {
+			t.Errorf("Of(%d) = %d, want %d", c.rep, got, c.want)
+		}
+	}
+
+	// A tiny community: the only active member has 5 points. The
+	// distribution says "top 1%", the floor keeps them at level 1.
+	tiny := Levels{Cuts: [4]int{5, 5, 5, 5}, Users: 1}
+	if got := tiny.Of(5); got != 1 {
+		t.Errorf("tiny community: Of(5) = %d, want 1", got)
+	}
+	if LevelName(0) != "New" || LevelName(3) != "Lv 3" {
+		t.Error("level names")
+	}
+}

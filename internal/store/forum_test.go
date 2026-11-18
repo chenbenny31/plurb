@@ -279,3 +279,31 @@ func TestReplyNotifications(t *testing.T) {
 		t.Errorf("bob unread after mark read = %d", n)
 	}
 }
+
+func TestRepLevelsFromDistribution(t *testing.T) {
+	f := newForum(t)
+	ctx := context.Background()
+	empty, err := f.st.RepLevels(ctx)
+	if err != nil || empty.Users != 0 {
+		t.Fatalf("empty distribution: %+v %v", empty, err)
+	}
+	// 100 users with reputation 1..100, plus one with none.
+	for i := 1; i <= 100; i++ {
+		f.user(fmt.Sprintf("user%03d", i), i, old)
+	}
+	f.user("lurker", 0, old)
+
+	l, err := f.st.RepLevels(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.Users != 100 || l.Cuts != [4]int{50, 80, 95, 99} {
+		t.Fatalf("levels = %+v", l)
+	}
+	if top, _ := f.st.RepTopPercent(ctx, 95); top != 6 {
+		t.Errorf("rep 95 ranks top %d%%, want 6%%", top)
+	}
+	if top, _ := f.st.RepTopPercent(ctx, 100); top != 1 {
+		t.Errorf("highest rep ranks top %d%%, want 1%%", top)
+	}
+}

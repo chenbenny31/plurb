@@ -78,3 +78,69 @@ const Gravity = 1.5
 func Hot(score float64, age time.Duration) float64 {
 	return score / math.Pow(age.Hours()+2, Gravity)
 }
+
+// ---- levels ----
+//
+// Reputation is shown as a level, not a number: where a user's reputation
+// sits in the current distribution. Levels are relative, so they stay
+// meaningful as the community (and point totals) grow.
+
+// LevelPercentiles are the distribution cut points for levels 2..5 among
+// users with positive reputation: above the median, top 20%, 5% and 1%.
+var LevelPercentiles = [4]float64{0.50, 0.80, 0.95, 0.99}
+
+// LevelFloors is the minimum reputation for levels 1..5, so a tiny
+// community can't put its only active member straight at the top.
+var LevelFloors = [5]int{1, 10, 50, 200, 500}
+
+// Levels is a snapshot of the distribution, recomputed periodically.
+type Levels struct {
+	Cuts  [4]int // reputation at each of LevelPercentiles
+	Users int    // users with positive reputation
+}
+
+// Of returns the level (0..5) for a reputation: the lower of where it sits
+// in the distribution and what its absolute floor allows.
+func (l Levels) Of(reputation int) int {
+	if reputation < LevelFloors[0] {
+		return 0
+	}
+	byRank := 1
+	for i, cut := range l.Cuts {
+		if l.Users > 0 && reputation >= cut {
+			byRank = i + 2
+		}
+	}
+	byFloor := 0
+	for i, floor := range LevelFloors {
+		if reputation >= floor {
+			byFloor = i + 1
+		}
+	}
+	return min(byRank, byFloor)
+}
+
+// LevelName is the short label shown next to names.
+func LevelName(level int) string {
+	if level == 0 {
+		return "New"
+	}
+	return "Lv " + string(rune('0'+level))
+}
+
+// LevelBand describes a level for tooltips.
+func LevelBand(level int) string {
+	switch level {
+	case 5:
+		return "top 1% of contributors"
+	case 4:
+		return "top 5% of contributors"
+	case 3:
+		return "top 20% of contributors"
+	case 2:
+		return "top half of contributors"
+	case 1:
+		return "contributor"
+	}
+	return "no reputation yet"
+}

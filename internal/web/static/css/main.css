@@ -233,6 +233,19 @@ textarea { font-family: var(--font-mono); font-size: var(--fs-sm); line-height: 
 .tint-slate { background: #e2e8f0; color: #334155; }
 .tint-sand { background: #fef3c7; color: #92400e; }
 
+/* reputation level badge: cool tones low, warm tones high */
+.lv {
+    display: inline-block; padding: 1px var(--s2); border-radius: var(--radius-pill);
+    font-size: var(--fs-xs); font-weight: 700; line-height: 1.5; white-space: nowrap; vertical-align: middle;
+}
+.lv-0 { background: var(--bg-soft); color: var(--muted); font-weight: 600; }
+.lv-1 { background: #f1f5f9; color: #475569; }
+.lv-2 { background: var(--sky-soft); color: var(--link); }
+.lv-3 { background: #bae6fd; color: #075985; }
+.lv-4 { background: var(--brand-soft); color: var(--brand-text); box-shadow: inset 0 0 0 1px #fed7aa; }
+.lv-5 { background: var(--brand); color: var(--brand-ink); }
+h1 .lv { font-size: var(--fs-sm); margin-left: var(--s2); }
+
 /* dropdown menu (native <details>) */
 .menu { position: relative; }
 .menu summary { list-style: none; cursor: pointer; border-radius: 50%; }
