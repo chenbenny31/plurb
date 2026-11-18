@@ -113,3 +113,36 @@ func TestViewsDedupeAndFlush(t *testing.T) {
 		})
 	}
 }
+
+// Shutdown arriving between "counts written" and "batch cleared" must not
+// make the final flush apply the same batch again.
+func TestViewsShutdownMidFlushCountsOnce(t *testing.T) {
+	for name, be := range backends(t) {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			var mu sync.Mutex
+			total := map[int64]int64{}
+			done := make(chan struct{})
+			be.Views.Hit(ctx, 1, "alice")
+			go func() {
+				be.Views.Run(ctx, 20*time.Millisecond, func(_ context.Context, c map[int64]int64) error {
+					mu.Lock()
+					for id, n := range c {
+						total[id] += n
+					}
+					mu.Unlock()
+					cancel() // SIGTERM lands just after the write commits
+					return nil
+				})
+				close(done)
+			}()
+			<-done
+
+			mu.Lock()
+			defer mu.Unlock()
+			if total[1] != 1 {
+				t.Fatalf("post 1 counted %d times, want 1", total[1])
+			}
+		})
+	}
+}

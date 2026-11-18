@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:18
@@ -27,8 +27,8 @@ jobs:
       PLURB_TEST_DATABASE_URL: postgres://plurb:plurb@localhost:5432/plurb_test?sslmode=disable
       PLURB_TEST_REDIS_URL: redis://localhost:6379/0
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: gofmt
@@ -41,7 +41,7 @@ jobs:
         run: go test -race -count=1 ./...
       - name: build
         run: CGO_ENABLED=0 go build -trimpath -o bin/plurb ./cmd/plurb
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: plurb-linux-amd64
           path: bin/plurb
@@ -50,7 +50,7 @@ jobs:
   # load test, so a regression that only shows under concurrency fails CI.
   smoke:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:18
@@ -72,8 +72,8 @@ jobs:
       PLURB_SIGNUP: open
       PLURB_RATE_LIMIT_SCALE: "1000"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
         with:
           name: plurb-linux-amd64
           path: bin

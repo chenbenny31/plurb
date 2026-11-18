@@ -148,6 +148,11 @@ func (v *redisViews) Run(ctx context.Context, interval time.Duration, flush Flus
 		if err := flush(fctx, counts); err != nil {
 			return err
 		}
-		return v.rdb.Del(fctx, flushing).Err()
+		// The counts are committed now. Clearing the batch must not be
+		// cancelled along with fctx (shutdown can land right here): a
+		// leftover "flushing" hash would be applied again by the next flush.
+		dctx, cancel := context.WithTimeout(context.WithoutCancel(fctx), 5*time.Second)
+		defer cancel()
+		return v.rdb.Del(dctx, flushing).Err()
 	})
 }
