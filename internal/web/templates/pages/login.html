@@ -1,6 +1,6 @@
 {{define "main"}}
 <main class="container">
-    <div class="login-box">
+    <div class="login-box card">
         <h1>Log in</h1>
         {{with .Data.Error}}<div class="error">{{.}}</div>{{end}}
         <form action="/login" method="post">

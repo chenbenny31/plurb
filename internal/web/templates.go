@@ -6,12 +6,15 @@ import (
 	"embed"
 	"encoding/hex"
 	"fmt"
+	"hash/fnv"
 	"html/template"
 	"io/fs"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/chenbenny31/plurb/internal/store"
 )
@@ -128,8 +131,9 @@ func templateFuncs(assetURL func(string) string) template.FuncMap {
 			}
 			return ""
 		},
-		"add":   func(a, b int) int { return a + b },
-		"score": formatScore,
+		"add":    func(a, b int) int { return a + b },
+		"score":  formatScore,
+		"avatar": avatar,
 		"voteArgs": func(typ string, id int64, score float64, myVote int, thread int64, canDown bool, own any) voteArgs {
 			return voteArgs{typ, id, score, myVote, thread, canDown, truthy(own)}
 		},
@@ -192,4 +196,19 @@ func truthy(v any) bool {
 		return x != nil
 	}
 	return false
+}
+
+// avatar renders an initials badge. The tint comes from a hash of the
+// username, so a person keeps the same colour everywhere.
+func avatar(username, displayName string) template.HTML {
+	tints := [...]string{"tint-orange", "tint-sky", "tint-slate", "tint-sand"}
+	h := fnv.New32a()
+	h.Write([]byte(username))
+	r, _ := utf8.DecodeRuneInString(strings.TrimSpace(displayName))
+	if r == utf8.RuneError {
+		r, _ = utf8.DecodeRuneInString(username)
+	}
+	initial := string(unicode.ToUpper(r))
+	return template.HTML(`<span class="avatar ` + tints[h.Sum32()%uint32(len(tints))] + `" aria-hidden="true">` +
+		template.HTMLEscapeString(initial) + `</span>`)
 }

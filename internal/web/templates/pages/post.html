@@ -11,6 +11,7 @@
         <header class="post-header">
             <h1>{{$p.Title}}</h1>
             <div class="post-meta">
+                {{avatar $p.AuthorUsername $p.AuthorDisplayName}}
                 <a href="/panorama/{{$p.AuthorUsername}}">{{$p.AuthorDisplayName}}</a>
                 {{with $p.PublishedAt}}<span>{{date .}}</span>{{end}}
                 <span class="reading-time">{{.Data.Minutes}} min read</span>

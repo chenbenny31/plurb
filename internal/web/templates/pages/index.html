@@ -2,6 +2,10 @@
 <main class="container-index">
     <div class="index-layout">
         <div class="index-main">
+            <div class="index-head">
+                <h1>{{if .Data.ActiveTag}}#{{.Data.ActiveTag}}{{else}}Latest writing{{end}}</h1>
+                <p class="muted">From everyone on plurb, newest first.</p>
+            </div>
             {{if .Data.Posts}}
             <div class="post-grid">
                 {{range .Data.Posts}}
@@ -16,6 +20,7 @@
                     <div class="post-card-body">
                         <h2><a href="/panorama/{{.AuthorUsername}}/{{.Slug}}">{{.Title}}</a></h2>
                         <div class="post-meta">
+                            {{avatar .AuthorUsername .AuthorDisplayName}}
                             <a href="/panorama/{{.AuthorUsername}}">{{.AuthorDisplayName}}</a>
                             <span>{{date .PublishedAt}}</span>
                         </div>
@@ -60,7 +65,7 @@
                     {{range .Data.Tags}}
                     <a class="tag{{if eq .Slug $active}} tag-active{{end}}" href="/panorama?tag={{.Slug}}">{{.Name}}</a>
                     {{end}}
-                    {{if $active}}<a class="tag" href="/panorama">× clear</a>{{end}}
+                    {{if $active}}<a class="chip" href="/panorama">× clear</a>{{end}}
                 </div>
             </div>
             {{end}}

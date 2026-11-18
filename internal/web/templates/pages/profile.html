@@ -2,9 +2,12 @@
 {{$u := .Data.Author}}
 <main class="container">
     <section class="profile-header">
-        <h1>{{$u.DisplayName}}</h1>
-        <p class="username">@{{$u.Username}} · {{$u.Reputation}} reputation</p>
-        <a class="rss-link" href="/panorama/{{$u.Username}}/feed.xml">RSS</a>
+        {{avatar $u.Username $u.DisplayName}}
+        <div>
+            <h1>{{$u.DisplayName}}</h1>
+            <p class="username">@{{$u.Username}} <span class="pill pill-brand">{{$u.Reputation}} rep</span>
+                <a class="rss-link" href="/panorama/{{$u.Username}}/feed.xml">RSS</a></p>
+        </div>
     </section>
 
     <div class="profile-tabs">
@@ -18,7 +21,7 @@
     {{else}}
         {{if .Data.Series}}
         <section>
-            <h2>Series</h2>
+            <h2 class="section-label">Series</h2>
             <ul class="series-list">
                 {{range .Data.Series}}
                 <li><a href="/panorama/{{$u.Username}}/series/{{.Slug}}">{{.Title}}</a> <span class="hint">{{.PostCount}} posts</span></li>
@@ -27,7 +30,7 @@
         </section>
         {{end}}
         <section>
-            <h2>Posts</h2>
+            <h2 class="section-label">Posts</h2>
             {{if .Data.Posts}}
             <ul class="post-list">
                 {{range .Data.Posts}}

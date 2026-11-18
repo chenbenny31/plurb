@@ -48,9 +48,18 @@ func TestForumBrowseAndPost(t *testing.T) {
 		t.Fatalf("comment: %d", resp.StatusCode)
 	}
 	parent := strings.TrimPrefix(resp.Header.Get("Location"), loc+"#c")
-	a.post(loc+"/comments", url.Values{"body": {"a reply"}, "parent_id": {parent}}, nil)
+	resp, _ = a.post(loc+"/comments", url.Values{"body": {"a reply"}, "parent_id": {parent}}, nil)
+	child := strings.TrimPrefix(resp.Header.Get("Location"), loc+"#c")
 	_, page = a.get(loc)
-	mustContain(t, page, `class="comment depth-0"`, `class="comment depth-1"`, "2 comments")
+	mustContain(t, page, "2 comments", `<details class="replies">`, "1 reply</summary>")
+	// The reply renders inside its parent's collapsed <details>, after the parent.
+	if p, d, c := strings.Index(page, `id="c`+parent+`"`), strings.Index(page, `<details class="replies">`),
+		strings.Index(page, `id="c`+child+`"`); !(p < d && d < c) {
+		t.Errorf("reply not nested under its parent: parent@%d details@%d child@%d", p, d, c)
+	}
+	// Replying without JS (?reply=child) opens the branch leading to the form.
+	_, page = a.get(loc + "?reply=" + child)
+	mustContain(t, page, `<details class="replies" open>`, `name="parent_id" value="`+child+`"`)
 
 	if resp, _ := a.post(loc+"/comments", url.Values{"body": {"  "}}, nil); resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Errorf("empty comment: %d", resp.StatusCode)
@@ -104,11 +113,11 @@ func TestForumVoting(t *testing.T) {
 	}
 
 	_, page := a.get("/forum/t/" + id)
-	mustContain(t, page, `<span class="vote-score">1</span>`)
+	mustContain(t, page, `<span class="vote-score" title="Reputation-weighted score">1</span>`)
 	_, page = a.get("/forum/reputation")
 	mustContain(t, page, "upvote_received", "vote_retracted")
 	_, page = a.get("/panorama/alice")
-	mustContain(t, page, "@alice · 5 reputation") // bob's +5 retracted, carol's +5 stands
+	mustContain(t, page, `@alice <span class="pill pill-brand">5 rep</span>`) // bob's +5 retracted, carol's +5 stands
 }
 
 func TestForumHotOrdering(t *testing.T) {

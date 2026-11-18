@@ -128,20 +128,59 @@ func (s *Server) createThread(w http.ResponseWriter, r *http.Request) {
 
 // ---- thread page ----
 
-type commentView struct {
+// commentNode is one comment plus its replies, for recursive rendering.
+type commentNode struct {
 	*store.Comment
-	HTML   template.HTML
-	MyVote int
+	HTML     template.HTML
+	MyVote   int
+	Children []*commentNode
+	Replies  int  // all descendants, shown on the collapsed "N replies" toggle
+	Open     bool // expand its replies (on the path to ?reply=, or it's new)
+	Page     *threadPage
 }
 
 type threadPage struct {
 	Thread      *store.Thread
 	Body        template.HTML
 	MyVote      int
-	Comments    []commentView
+	Comments    []*commentNode // top-level comments; replies hang off Children
 	CanDownvote bool
 	ReplyTo     int64 // comment id when ?reply= is set, for no-JS replies
 	Error       string
+	Viewer      *store.User
+}
+
+// buildTree turns comments in path order (parents before children) into a
+// forest, counting descendants and opening the branch that leads to openID.
+func buildTree(nodes []*commentNode, openID int64) []*commentNode {
+	byID := make(map[int64]*commentNode, len(nodes)) // comment id -> node
+	var roots []*commentNode
+	for _, n := range nodes {
+		byID[n.ID] = n
+		if parent, ok := byID[n.ParentID.Int64]; n.ParentID.Valid && ok {
+			parent.Children = append(parent.Children, n)
+		} else {
+			roots = append(roots, n)
+		}
+	}
+	var count func(n *commentNode) (int, bool)
+	count = func(n *commentNode) (int, bool) {
+		total, onPath := 0, n.ID == openID
+		for _, c := range n.Children {
+			sub, childOnPath := count(c)
+			total += 1 + sub
+			onPath = onPath || childOnPath
+			if childOnPath {
+				n.Open = true
+			}
+		}
+		n.Replies = total
+		return total, onPath
+	}
+	for _, r := range roots {
+		count(r)
+	}
+	return roots
 }
 
 func (s *Server) threadByPath(w http.ResponseWriter, r *http.Request) (*store.Thread, bool) {
@@ -190,18 +229,20 @@ func (s *Server) renderThread(w http.ResponseWriter, r *http.Request, status int
 			return
 		}
 	}
-	d := threadPage{Thread: t, Body: body.HTML, MyVote: votes["thread:"+strconv.FormatInt(t.ID, 10)], Error: problem}
+	d := &threadPage{Thread: t, Body: body.HTML, MyVote: votes["thread:"+strconv.FormatInt(t.ID, 10)], Error: problem, Viewer: u}
 	d.CanDownvote = u != nil && u.Reputation >= rep.DownvoteMinRep
 	d.ReplyTo, _ = strconv.ParseInt(r.URL.Query().Get("reply"), 10, 64)
+	nodes := make([]*commentNode, 0, len(comments))
 	for _, c := range comments {
 		out, err := s.renderCached(ctx, "fmd:c:"+strconv.FormatInt(c.ID, 10), c.BodyMD)
 		if err != nil {
 			s.serverError(w, r, err)
 			return
 		}
-		d.Comments = append(d.Comments, commentView{Comment: c, HTML: out.HTML,
+		nodes = append(nodes, &commentNode{Comment: c, HTML: out.HTML, Page: d,
 			MyVote: votes["comment:"+strconv.FormatInt(c.ID, 10)]})
 	}
+	d.Comments = buildTree(nodes, d.ReplyTo)
 	v := s.newView(r, t.Title, d)
 	v.Section = "forum"
 	s.render(w, r, status, "forum_thread", v)
@@ -317,4 +358,14 @@ func (s *Server) repHistory(w http.ResponseWriter, r *http.Request) {
 	v := s.newView(r, "Reputation", repPage{events})
 	v.Section = "forum"
 	s.render(w, r, http.StatusOK, "rep_history", v)
+}
+
+// Own reports whether the viewer wrote this comment (no self-voting).
+func (n *commentNode) Own() bool {
+	return n.Page.Viewer != nil && n.Page.Viewer.ID == n.AuthorID
+}
+
+// OwnThread reports whether the viewer started the thread.
+func (p *threadPage) OwnThread() bool {
+	return p.Viewer != nil && p.Viewer.ID == p.Thread.AuthorID
 }

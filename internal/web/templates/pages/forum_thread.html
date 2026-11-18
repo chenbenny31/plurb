@@ -1,80 +1,99 @@
 {{define "voter"}}
-{{/* . = dict-like struct: Type, ID, Score, MyVote, Thread, CanDownvote, Own */}}
-<div class="voter" data-type="{{.Type}}" data-id="{{.ID}}" data-thread="{{.Thread}}">
+{{/* . = voteArgs: Type, ID, Score, MyVote, Thread, CanDownvote, Own */}}
+<div class="voter{{if eq .Type "comment"}} voter-inline{{end}}" data-type="{{.Type}}" data-id="{{.ID}}" data-thread="{{.Thread}}">
     <form action="/forum/vote" method="post" class="inline-form">
         <input type="hidden" name="type" value="{{.Type}}"><input type="hidden" name="id" value="{{.ID}}">
         <input type="hidden" name="thread" value="{{.Thread}}">
         <input type="hidden" name="value" value="{{if eq .MyVote 1}}0{{else}}1{{end}}">
-        <button type="submit" class="vote-btn{{if eq .MyVote 1}} voted{{end}}" data-value="1" title="upvote" {{if .Own}}disabled{{end}}>▲</button>
+        <button type="submit" class="vote-btn{{if eq .MyVote 1}} voted{{end}}" data-value="1"
+                title="{{if .Own}}You can't vote on your own post{{else}}Upvote{{end}}" {{if .Own}}disabled{{end}}>
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 3 14 11H2z" fill="currentColor"/></svg>
+        </button>
     </form>
-    <span class="vote-score">{{score .Score}}</span>
+    <span class="vote-score" title="Reputation-weighted score">{{score .Score}}</span>
     <form action="/forum/vote" method="post" class="inline-form">
         <input type="hidden" name="type" value="{{.Type}}"><input type="hidden" name="id" value="{{.ID}}">
         <input type="hidden" name="thread" value="{{.Thread}}">
         <input type="hidden" name="value" value="{{if eq .MyVote -1}}0{{else}}-1{{end}}">
         <button type="submit" class="vote-btn{{if eq .MyVote -1}} voted{{end}}" data-value="-1"
-                title="{{if .CanDownvote}}downvote{{else}}downvoting unlocks at 15 reputation{{end}}"
-                {{if or .Own (not .CanDownvote)}}disabled{{end}}>▼</button>
+                title="{{if .Own}}You can't vote on your own post{{else if .CanDownvote}}Downvote{{else}}Downvoting unlocks at 15 reputation{{end}}"
+                {{if or .Own (not .CanDownvote)}}disabled{{end}}>
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 13 2 5h12z" fill="currentColor"/></svg>
+        </button>
     </form>
 </div>
 {{end}}
 
+{{define "comment"}}
+{{$p := .Page}}
+<article class="comment" id="c{{.ID}}">
+    <div class="comment-gutter">{{avatar .AuthorUsername .AuthorDisplayName}}</div>
+    <div class="comment-main">
+        <header class="post-meta">
+            <a href="/panorama/{{.AuthorUsername}}">{{.AuthorDisplayName}}</a>
+            <span class="pill pill-sky">{{.AuthorReputation}} rep</span>
+            {{if eq .AuthorID $p.Thread.AuthorID}}<span class="pill pill-brand">OP</span>{{end}}
+            <a class="date" href="#c{{.ID}}">{{ago .CreatedAt}}</a>
+        </header>
+        <div class="post-body comment-body">{{.HTML}}</div>
+        <div class="comment-actions">
+            {{template "voter" (voteArgs "comment" .ID .Score .MyVote $p.Thread.ID $p.CanDownvote .Own)}}
+            {{if $p.Viewer}}
+            <a class="reply-link" href="?reply={{.ID}}#c{{.ID}}" data-reply="{{.ID}}">Reply</a>
+            {{end}}
+        </div>
+        {{if and $p.Viewer (eq $p.ReplyTo .ID)}}
+        <form action="/forum/t/{{$p.Thread.ID}}/comments" method="post" class="comment-form">
+            <input type="hidden" name="parent_id" value="{{.ID}}">
+            <textarea name="body" rows="3" required autofocus></textarea>
+            <button type="submit">Reply</button>
+        </form>
+        {{end}}
+        {{if .Children}}
+        <details class="replies"{{if .Open}} open{{end}}>
+            <summary>{{.Replies}} {{if eq .Replies 1}}reply{{else}}replies{{end}}</summary>
+            {{range .Children}}{{template "comment" .}}{{end}}
+        </details>
+        {{end}}
+    </div>
+</article>
+{{end}}
+
 {{define "main"}}
-{{$t := .Data.Thread}}{{$me := .User}}{{$d := .Data}}
+{{$t := .Data.Thread}}{{$d := .Data}}
 <main class="container">
+    <p class="crumbs"><a href="/forum">← Study Room</a></p>
     {{with .Data.Error}}<p class="error">{{.}}</p>{{end}}
-    <article class="thread">
+    <article class="thread card">
         <div class="thread-head">
-            {{template "voter" (voteArgs "thread" $t.ID $t.Score $d.MyVote $t.ID $d.CanDownvote (and $me (eq $me.ID $t.AuthorID)))}}
-            <div>
+            {{template "voter" (voteArgs "thread" $t.ID $t.Score $d.MyVote $t.ID $d.CanDownvote $d.OwnThread)}}
+            <div class="thread-head-main">
                 <h1>{{$t.Title}}</h1>
                 <div class="post-meta">
+                    {{avatar $t.AuthorUsername $t.AuthorDisplayName}}
                     <a href="/panorama/{{$t.AuthorUsername}}">{{$t.AuthorDisplayName}}</a>
-                    <span class="hint">{{$t.AuthorReputation}} rep</span>
-                    <span>{{ago $t.CreatedAt}}</span>
+                    <span class="pill pill-sky">{{$t.AuthorReputation}} rep</span>
+                    <span class="date">{{ago $t.CreatedAt}}</span>
                 </div>
+                {{if $t.BodyMD}}<div class="post-body thread-body">{{.Data.Body}}</div>{{end}}
             </div>
         </div>
-        <div class="post-body">{{.Data.Body}}</div>
     </article>
 
     <section id="comments" class="comments">
-        <h2>{{$t.CommentCount}} comments</h2>
-        {{if $me}}
-        <form action="/forum/t/{{$t.ID}}/comments" method="post" class="comment-form">
-            <textarea name="body" rows="4" placeholder="Add to the discussion (markdown)" required></textarea>
+        <h2 class="section-label">{{$t.CommentCount}} {{if eq $t.CommentCount 1}}comment{{else}}comments{{end}}</h2>
+        {{if .User}}
+        <form action="/forum/t/{{$t.ID}}/comments" method="post" class="comment-form comment-new card">
+            {{avatar .User.Username .User.DisplayName}}
+            <textarea name="body" rows="3" placeholder="Add to the discussion (markdown)" required></textarea>
             <button type="submit">Comment</button>
         </form>
         {{else}}
-        <p class="hint"><a href="/login?next=/forum/t/{{$t.ID}}">Log in</a> to comment and vote.</p>
+        <p class="comment-login card"><a href="/login?next=/forum/t/{{$t.ID}}">Log in</a> to comment and vote.</p>
         {{end}}
 
-        {{range .Data.Comments}}
-        <div class="comment depth-{{.Depth}}" id="c{{.ID}}">
-            {{template "voter" (voteArgs "comment" .ID .Score .MyVote $t.ID $d.CanDownvote (and $me (eq $me.ID .AuthorID)))}}
-            <div class="comment-main">
-                <div class="post-meta">
-                    <a href="/panorama/{{.AuthorUsername}}">{{.AuthorDisplayName}}</a>
-                    <span class="hint">{{.AuthorReputation}} rep</span>
-                    <a href="#c{{.ID}}">{{ago .CreatedAt}}</a>
-                </div>
-                <div class="post-body comment-body">{{.HTML}}</div>
-                {{if $me}}
-                {{if eq $d.ReplyTo .ID}}
-                <form action="/forum/t/{{$t.ID}}/comments" method="post" class="comment-form">
-                    <input type="hidden" name="parent_id" value="{{.ID}}">
-                    <textarea name="body" rows="3" required autofocus></textarea>
-                    <button type="submit">Reply</button>
-                </form>
-                {{else}}
-                <a class="hint reply-link" href="?reply={{.ID}}#c{{.ID}}" data-reply="{{.ID}}">reply</a>
-                {{end}}
-                {{end}}
-            </div>
-        </div>
-        {{end}}
+        {{range .Data.Comments}}{{template "comment" .}}{{end}}
     </section>
-    <p><a href="/forum">← Study Room</a></p>
 </main>
 <script src="{{asset "js/forum.js"}}" defer></script>
 {{end}}

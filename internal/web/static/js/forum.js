@@ -1,5 +1,6 @@
-// Progressive enhancement for the forum: vote without a page reload, and
-// open reply boxes inline. Everything works without JS via plain forms.
+// Progressive enhancement for the forum: vote without a reload, open reply
+// boxes inline, and expand collapsed replies that a #c123 link points into.
+// Everything still works without JS via plain forms and links.
 (function () {
   document.querySelectorAll('.voter').forEach(function (box) {
     box.querySelectorAll('form').forEach(function (form) {
@@ -15,9 +16,13 @@
         })
           .then(function (r) { return r.json(); })
           .then(function (res) {
-            var flash = box.querySelector('.vote-error');
+            var flash = box.parentElement.querySelector('.vote-error');
             if (res.error) {
-              if (!flash) { flash = document.createElement('span'); flash.className = 'vote-error'; box.appendChild(flash); }
+              if (!flash) {
+                flash = document.createElement('span');
+                flash.className = 'vote-error';
+                box.after(flash);
+              }
               flash.textContent = res.error;
               return;
             }
@@ -41,7 +46,12 @@
   document.querySelectorAll('a[data-reply]').forEach(function (link) {
     link.addEventListener('click', function (e) {
       e.preventDefault();
-      if (link.nextElementSibling && link.nextElementSibling.tagName === 'FORM') return;
+      var actions = link.closest('.comment-actions');
+      var existing = actions.nextElementSibling;
+      if (existing && existing.classList.contains('comment-form')) {
+        existing.querySelector('textarea').focus();
+        return;
+      }
       var thread = location.pathname.split('/').pop();
       var form = document.createElement('form');
       form.method = 'post';
@@ -49,8 +59,20 @@
       form.className = 'comment-form';
       form.innerHTML = '<input type="hidden" name="parent_id"><textarea name="body" rows="3" required></textarea><button type="submit">Reply</button>';
       form.querySelector('input').value = link.dataset.reply;
-      link.after(form);
+      actions.after(form);
       form.querySelector('textarea').focus();
     });
   });
+
+  // Replies start collapsed; open every ancestor of the comment in the URL.
+  function reveal() {
+    var target = location.hash && document.getElementById(location.hash.slice(1));
+    if (!target) return;
+    for (var el = target.parentElement; el; el = el.parentElement) {
+      if (el.tagName === 'DETAILS') el.open = true;
+    }
+    target.scrollIntoView({ block: 'center' });
+  }
+  reveal();
+  window.addEventListener('hashchange', reveal);
 })();

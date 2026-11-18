@@ -79,22 +79,28 @@ var (
 	cssRule     = regexp.MustCompile(`(?m)^(/\*[^*]*\*/ )?([^{}\n]+)\{`)
 )
 
-// CodeCSS returns the stylesheet for highlighted code: a dark theme by
-// default and a light one under html.light, matching the site theme toggle.
+// CodeCSS returns the stylesheet for highlighted code: a light theme by
+// default and a dark one under html.dark, matching the site theme toggle.
+// Each theme is scoped to its mode, so a token class that only one theme
+// defines (e.g. github's punctuation colour) can't leak into the other.
 func CodeCSS() string {
 	codeCSSOnce.Do(func() {
-		var dark, light bytes.Buffer
-		codeFormatter.WriteCSS(&dark, styles.Get("github-dark"))
+		var light, dark bytes.Buffer
 		codeFormatter.WriteCSS(&light, styles.Get("github"))
-		prefixed := cssRule.ReplaceAllStringFunc(light.String(), func(rule string) string {
-			m := cssRule.FindStringSubmatch(rule)
-			sels := strings.Split(m[2], ",")
-			for i, s := range sels {
-				sels[i] = "html.light " + strings.TrimSpace(s)
-			}
-			return m[1] + strings.Join(sels, ", ") + " {"
-		})
-		codeCSS = dark.String() + prefixed
+		codeFormatter.WriteCSS(&dark, styles.Get("github-dark"))
+		codeCSS = scopeCSS(light.String(), "html:not(.dark) ") + scopeCSS(dark.String(), "html.dark ")
 	})
 	return codeCSS
+}
+
+// scopeCSS prefixes every selector of chroma's one-rule-per-line CSS.
+func scopeCSS(css, prefix string) string {
+	return cssRule.ReplaceAllStringFunc(css, func(rule string) string {
+		m := cssRule.FindStringSubmatch(rule)
+		sels := strings.Split(m[2], ",")
+		for i, s := range sels {
+			sels[i] = prefix + strings.TrimSpace(s)
+		}
+		return m[1] + strings.Join(sels, ", ") + " {"
+	})
 }

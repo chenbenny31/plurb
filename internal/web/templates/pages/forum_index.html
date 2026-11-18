@@ -1,23 +1,24 @@
 {{define "main"}}
 <main class="container">
-    <div class="dashboard-header">
-        <h1>{{if .Data.Searched}}Search{{else}}Study Room{{end}}</h1>
-        <div class="dashboard-actions">
-            <a class="button" href="/forum/new">New thread</a>
+    <div class="page-head">
+        <div>
+            <h1>{{if .Data.Searched}}Search threads{{else}}Study Room{{end}}</h1>
+            {{if not .Data.Searched}}<p class="muted">Every vote counts by the reputation behind it.</p>{{end}}
         </div>
+        <a class="button" href="/forum/new">New thread</a>
     </div>
 
     {{if .Data.Searched}}
     <form class="search-form" action="/forum/search" method="get">
-        <input type="search" name="q" class="search-input" placeholder="search threads…" value="{{.Data.Q}}" autofocus>
-        <button type="submit" class="button">Search</button>
+        <input type="search" name="q" placeholder="Search threads…" value="{{.Data.Q}}" autofocus>
+        <button type="submit">Search</button>
     </form>
     {{else}}
     <nav class="sort-tabs">
         {{$sort := .Data.Sort}}
-        <a class="tab-btn{{if eq $sort "hot"}} tab-active{{end}}" href="/forum?sort=hot">hot</a>
-        <a class="tab-btn{{if eq $sort "new"}} tab-active{{end}}" href="/forum?sort=new">new</a>
-        <a class="tab-btn{{if eq $sort "top"}} tab-active{{end}}" href="/forum?sort=top">top</a>
+        <a class="tab-btn{{if eq $sort "hot"}} tab-active{{end}}" href="/forum?sort=hot">Hot</a>
+        <a class="tab-btn{{if eq $sort "new"}} tab-active{{end}}" href="/forum?sort=new">New</a>
+        <a class="tab-btn{{if eq $sort "top"}} tab-active{{end}}" href="/forum?sort=top">Top</a>
     </nav>
     {{end}}
 
@@ -25,30 +26,39 @@
     <ol class="thread-list">
         {{range .Data.Threads}}
         <li class="thread-row">
-            <span class="thread-score" title="reputation-weighted score">{{score .Score}}</span>
+            <span class="thread-score" title="Reputation-weighted score">{{score .Score}}<small>score</small></span>
             <div class="thread-main">
                 <a class="thread-title" href="/forum/t/{{.ID}}">{{.Title}}</a>
                 <div class="post-meta">
+                    {{avatar .AuthorUsername .AuthorDisplayName}}
                     <a href="/panorama/{{.AuthorUsername}}">{{.AuthorDisplayName}}</a>
-                    <span class="hint">{{.AuthorReputation}} rep</span>
-                    <span>{{ago .CreatedAt}}</span>
-                    <a href="/forum/t/{{.ID}}#comments">{{.CommentCount}} comments</a>
+                    <span class="pill pill-sky">{{.AuthorReputation}} rep</span>
+                    <span class="date">{{ago .CreatedAt}}</span>
                 </div>
             </div>
+            <a class="thread-comments" href="/forum/t/{{.ID}}#comments" title="Comments">
+                <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M2 3h12v8H6l-3 3v-3H2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                {{.CommentCount}}
+            </a>
         </li>
         {{end}}
     </ol>
     {{else}}
-    <p>{{if .Data.Searched}}{{if .Data.Q}}No threads match “{{.Data.Q}}”.{{end}}{{else}}No threads yet. <a href="/forum/new">Start one.</a>{{end}}</p>
+    <div class="empty card">
+        {{if .Data.Searched}}{{if .Data.Q}}No threads match “{{.Data.Q}}”.{{else}}Type something to search.{{end}}
+        {{else}}No threads yet. <a href="/forum/new">Start the first one.</a>{{end}}
+    </div>
     {{end}}
 
     {{if or .Data.PrevPage .Data.NextPage}}
     <div class="pagination">
-        {{with .Data.PrevPage}}<a class="page-btn" href="/forum?sort={{$.Data.Sort}}&amp;page={{.}}">← prev</a>{{end}}
-        {{with .Data.NextPage}}<a class="page-btn" href="/forum?sort={{$.Data.Sort}}&amp;page={{.}}">next →</a>{{end}}
+        {{with .Data.PrevPage}}<a class="page-btn" href="/forum?sort={{$.Data.Sort}}&amp;page={{.}}">← Prev</a>{{end}}
+        {{with .Data.NextPage}}<a class="page-btn" href="/forum?sort={{$.Data.Sort}}&amp;page={{.}}">Next →</a>{{end}}
     </div>
     {{end}}
 
-    <p class="hint form-note">Scores are weighted: each vote counts by the voter's reputation (new accounts count zero), and “hot” decays with age.</p>
+    {{if not .Data.Searched}}
+    <p class="hint form-note">New accounts vote with zero weight; downvoting unlocks at 15 reputation. “Hot” decays with age.</p>
+    {{end}}
 </main>
 {{end}}

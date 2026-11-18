@@ -1,46 +1,42 @@
 {{define "main"}}
 <main>
     <section class="hero">
-        <div class="hero-inner">
-            <h1 class="hero-brand">plurb</h1>
-            <p class="hero-tagline">out of many, one.</p>
+        <span class="hero-eyebrow">out of many, one</span>
+        <h1 class="hero-brand">plurb<span class="dot">.</span></h1>
+        <p class="hero-lede">A text-only home for writing and discussion. Publish in Panorama, talk it through in the Study Room, where every vote is weighted by earned reputation.</p>
+        <div class="hero-cta">
+            <a class="button" href="/panorama">Read Panorama</a>
+            <a class="button button-ghost" href="/forum">Join the discussion</a>
         </div>
     </section>
 
     <section class="modules">
-        <div class="container-landing">
-            <div class="module-grid">
-                <div class="module-card">
-                    <h2 class="module-name">Panorama</h2>
-                    <p class="module-tagline">you are what you show.</p>
-                    <p class="module-desc">A personal markdown blog. Write, publish, share your work.</p>
-                    <a class="module-link" href="/panorama">explore →</a>
-                </div>
-                <div class="module-card">
-                    <h2 class="module-name">Study Room</h2>
-                    <p class="module-tagline">you are already accepted!</p>
-                    <p class="module-desc">A forum for focused discussion. Votes are weighted by earned reputation.</p>
-                    <a class="module-link" href="/forum">join in →</a>
-                </div>
-                <div class="module-card module-soon">
-                    <h2 class="module-name">Ladders</h2>
-                    <p class="module-tagline">you want to go higher?</p>
-                    <p class="module-desc">Reputation built post by post, contribution by contribution.</p>
-                    <span class="module-status">coming soon</span>
-                </div>
+        <div class="module-grid">
+            <a class="module-card" href="/panorama">
+                <span class="module-num">01</span>
+                <h2 class="module-name">Panorama</h2>
+                <p class="module-desc">A personal markdown blog. Write, publish, share your work.</p>
+                <span class="module-link">Explore →</span>
+            </a>
+            <a class="module-card" href="/forum">
+                <span class="module-num">02</span>
+                <h2 class="module-name">Study Room</h2>
+                <p class="module-desc">A forum for focused discussion. Votes count by the reputation behind them.</p>
+                <span class="module-link">Join in →</span>
+            </a>
+            <div class="module-card module-soon">
+                <span class="module-num">03</span>
+                <h2 class="module-name">Ladders</h2>
+                <p class="module-desc">Reputation built post by post, contribution by contribution.</p>
+                <span class="pill">Coming soon</span>
             </div>
         </div>
     </section>
 
-    <section class="principles">
-        <div class="container-landing">
-            <h2>Principles</h2>
-            <ul class="principles-list">
-                <li>No tracking. No ads.</li>
-                <li>Text only. Media stays where it lives.</li>
-                <li>Own your words.</li>
-            </ul>
-        </div>
-    </section>
+    <div class="principles">
+        <span>No tracking, no ads</span>
+        <span>Text only, media stays where it lives</span>
+        <span>Own your words</span>
+    </div>
 </main>
 {{end}}

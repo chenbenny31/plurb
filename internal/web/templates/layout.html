@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}} — plurb</title>
-    <link rel="icon" href="{{asset "logo.svg"}}" type="image/svg+xml">
+    <link rel="icon" href="{{asset "favicon.svg"}}" type="image/svg+xml">
     <link rel="stylesheet" href="{{asset "css/main.css"}}">
     <link rel="stylesheet" href="/static/css/code.css">
     <script src="{{asset "js/theme.js"}}"></script>
@@ -19,68 +19,56 @@
     {{with .RSSURL}}<link rel="alternate" type="application/rss+xml" href="{{.}}" title="RSS">{{end}}
 </head>
 <body>
-<nav>
-    <div class="{{if .Section}}nav-inner{{else}}nav-inner nav-inner-wide{{end}}">
-        <div class="nav-brand-group">
-            <a class="nav-brand" href="{{if eq .Section "forum"}}/forum{{else if .Section}}/panorama{{else}}/{{end}}">
-                <img src="{{asset "logo.svg"}}" alt="plurb" class="nav-logo">
-                {{if eq .Section "forum"}}<span class="nav-brand-sub">study room</span>
-                {{else if .Section}}<span class="nav-brand-sub">panorama</span>{{end}}
-            </a>
-            <span class="nav-tagline">{{if eq .Section "forum"}}you are already accepted!{{else if .Section}}you are what you show.{{else}}out of many, one.{{end}}</span>
-        </div>
-        <div class="nav-links">
+<header class="site-nav">
+    <div class="nav-inner">
+        <a class="wordmark" href="/">plurb<span class="dot">.</span></a>
+        <nav class="sections" aria-label="Sections">
+            <a href="/panorama"{{if eq .Section "panorama"}} class="active"{{end}}>Panorama</a>
+            <a href="/forum"{{if eq .Section "forum"}} class="active"{{end}}>Study Room</a>
+        </nav>
+        <div class="nav-right">
             {{if .Section}}
-            <form class="nav-search" action="{{if eq .Section "forum"}}/forum/search{{else}}/panorama/search{{end}}" method="get">
-                <input type="search" name="q" placeholder="search…" class="nav-search-input" value="{{.Q}}">
+            <form class="nav-search" action="{{if eq .Section "forum"}}/forum/search{{else}}/panorama/search{{end}}" method="get" role="search">
+                <input type="search" name="q" placeholder="Search {{if eq .Section "forum"}}threads{{else}}posts{{end}}…" value="{{.Q}}" aria-label="Search">
             </form>
             {{end}}
-            {{if eq .Section "forum"}}<a class="nav-btn" href="/panorama">panorama</a>{{else}}<a class="nav-btn" href="/forum">forum</a>{{end}}
             {{if .User}}
-                {{if eq .Section "forum"}}
-                <a class="nav-btn" href="/forum/reputation" title="Your reputation">{{.User.Reputation}} rep</a>
-                {{else}}
-                <a class="nav-btn" href="/panorama/editor">dashboard</a>
-                {{end}}
-                <a class="nav-btn" href="/notifications" title="Inbox">inbox<span id="inboxCount" class="badge"{{if not .Unread}} hidden{{end}}>{{.Unread}}</span></a>
-                <a class="nav-btn" href="/panorama/editor/account">account</a>
-                <form action="/logout" method="post" class="nav-form">
-                    <button type="submit" class="nav-btn nav-btn-plain">logout</button>
-                </form>
+                <a class="nav-link nav-inbox" href="/notifications" title="Inbox">Inbox<span id="inboxCount" class="badge"{{if not .Unread}} hidden{{end}}>{{.Unread}}</span></a>
+                <details class="menu">
+                    <summary aria-label="Account menu">{{avatar .User.Username .User.DisplayName}}</summary>
+                    <div class="menu-panel">
+                        <div class="menu-head">
+                            <strong>{{.User.DisplayName}}</strong>
+                            <span class="muted">@{{.User.Username}} · {{.User.Reputation}} rep</span>
+                        </div>
+                        <a href="/notifications">Inbox{{if .Unread}} <span class="badge">{{.Unread}}</span>{{end}}</a>
+                        <a href="/panorama/{{.User.Username}}">Your profile</a>
+                        <a href="/panorama/editor">Dashboard</a>
+                        <a href="/panorama/editor/new">New post</a>
+                        <a href="/forum/reputation">Reputation</a>
+                        <a href="/panorama/editor/account">Account</a>
+                        <form action="/logout" method="post"><button type="submit" class="menu-item">Log out</button></form>
+                    </div>
+                </details>
             {{else}}
-                <a class="nav-btn" href="/login">login</a>
-                {{if .OpenSignup}}<a class="nav-btn" href="/signup">sign up</a>{{end}}
+                <a class="nav-link" href="/login">Log in</a>
+                {{if .OpenSignup}}<a class="button button-sm" href="/signup">Sign up</a>{{end}}
             {{end}}
-            {{if .Section}}
-                <a class="nav-btn nav-btn-back" href="/">&#8592; plurb</a>
-            {{else}}
-                <a class="nav-btn" href="/panorama">panorama</a>
-            {{end}}
-            <button type="button" id="themeToggle" class="nav-btn nav-btn-theme" title="Toggle theme">◑</button>
+            <button type="button" id="themeToggle" class="icon-button" title="Toggle dark mode" aria-label="Toggle dark mode">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+            </button>
         </div>
     </div>
-</nav>
+</header>
 
 {{block "main" .}}{{end}}
 
-<footer>
+<footer class="site-footer">
     <div class="footer-inner">
-        <div class="footer-left">
-            <span class="footer-brand">plurb</span>
-            <span class="footer-tagline">out of many, one.</span>
-        </div>
-        <div class="footer-center">
-            <p>Made by <a href="https://github.com/chen-benny" target="_blank" rel="noopener">Benny Chen</a></p>
-            <p>
-                Content licensed under
-                <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>
-                · Source code under
-                <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">AGPL-3.0</a>
-            </p>
-        </div>
-        <div class="footer-right">
-            <a href="https://github.com/chenbenny31/plurb" target="_blank" rel="noopener">GitHub</a>
-        </div>
+        <a class="wordmark wordmark-sm" href="/">plurb<span class="dot">.</span></a>
+        <span>Made by <a href="https://github.com/chen-benny" target="_blank" rel="noopener">Benny Chen</a></span>
+        <span>Content <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Code <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">AGPL-3.0</a></span>
+        <a href="https://github.com/chenbenny31/plurb" target="_blank" rel="noopener">GitHub</a>
     </div>
 </footer>
 </body>
@@ -88,4 +76,4 @@
 {{end}}
 
 {{/* Tag chips for a post; tags link to the author's tag page. */}}
-{{define "tags"}}{{$u := .AuthorUsername}}{{range .Tags}}<a class="tag" href="/panorama/{{$u}}/tag/{{.Slug}}">{{.Name}}</a> {{end}}{{end}}
+{{define "tags"}}{{$u := .AuthorUsername}}{{range .Tags}}<a class="tag" href="/panorama/{{$u}}/tag/{{.Slug}}">{{.Name}}</a>{{end}}{{end}}

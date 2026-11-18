@@ -93,8 +93,14 @@ func TestCodeHighlightUsesClasses(t *testing.T) {
 	if !strings.Contains(html, `class="chroma"`) || strings.Contains(html, "style=") {
 		t.Errorf("code block: %s", html)
 	}
-	if !strings.Contains(CodeCSS(), "html.light .chroma") {
-		t.Error("light theme css missing")
+	css := CodeCSS()
+	if !strings.Contains(css, "html.dark .chroma") || !strings.Contains(css, "html:not(.dark) .chroma .p") {
+		t.Error("code themes not scoped to light/dark")
+	}
+	for _, line := range strings.Split(strings.TrimSpace(css), "\n") {
+		if !strings.Contains(line, "html.dark ") && !strings.Contains(line, "html:not(.dark) ") {
+			t.Fatalf("unscoped rule leaks across themes: %s", line)
+		}
 	}
 }
 
