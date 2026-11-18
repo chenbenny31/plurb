@@ -30,7 +30,9 @@ const usage = `usage: plurb <command>
 
 commands:
   serve    apply pending migrations, then run the web server (default)
-  migrate  apply pending migrations and exit
+  migrate [-status]
+           apply pending migrations and exit; -status lists applied and
+           pending migrations without changing anything
   createuser [-admin] [-name "Display Name"] <username>
            create an account; the password is read from PLURB_PASSWORD
            or the first line of stdin
@@ -64,6 +66,14 @@ func run(args []string) error {
 	case "serve":
 		return serve(cfg, log)
 	case "migrate":
+		fs := flag.NewFlagSet("migrate", flag.ContinueOnError)
+		status := fs.Bool("status", false, "list migrations without applying them")
+		if err := fs.Parse(args); err != nil {
+			return err
+		}
+		if *status {
+			return migrateStatus(cfg)
+		}
 		pool, err := openAndMigrate(context.Background(), cfg, log)
 		if err != nil {
 			return err
@@ -109,7 +119,45 @@ func openAndMigrate(ctx context.Context, cfg config.Config, log *slog.Logger) (*
 	for _, name := range applied {
 		log.Info("applied migration", "name", name)
 	}
+	// After a binary rollback the schema can be ahead of this release; that's
+	// fine as long as migrations stay backward compatible (see internal/db).
+	if st, err := db.Status(ctx, pool); err == nil {
+		for _, m := range st {
+			if m.Unknown {
+				log.Warn("database has a migration this binary doesn't know (rolled back?)", "name", m.Name)
+			}
+		}
+	}
 	return pool, nil
+}
+
+func migrateStatus(cfg config.Config) error {
+	ctx := context.Background()
+	pool, err := db.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	st, err := db.Status(ctx, pool)
+	if err != nil {
+		return err
+	}
+	pending := 0
+	for _, m := range st {
+		state := "applied " + m.AppliedAt.Format("2006-01-02 15:04")
+		switch {
+		case m.Unknown:
+			state += "  (newer than this binary)"
+		case m.Edited:
+			state += "  EDITED SINCE APPLIED"
+		case m.AppliedAt.IsZero():
+			state = "pending"
+			pending++
+		}
+		fmt.Printf("%-40s %s\n", m.Name, state)
+	}
+	fmt.Printf("%d pending\n", pending)
+	return nil
 }
 
 func serve(cfg config.Config, log *slog.Logger) error {
