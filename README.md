@@ -57,6 +57,8 @@ internal/notify/      LISTEN/NOTIFY hub feeding SSE streams
 internal/web/         handlers, middleware, templates/, static/
 internal/legacy/      one-off importer from the old Java/Spring database
 deploy/               systemd unit, nginx site, env example, deploy script
+loadtest/             k6 scripts
+.github/workflows/    CI: integration tests with Postgres + Redis, k6 smoke
 ```
 
 ## Development
@@ -81,6 +83,7 @@ echo 'a long password' | go run ./cmd/plurb createuser -admin -name Benny benny
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | – | enable GitHub login |
 | `REDIS_URL` | – | Redis for cache / rate limits / view counts (in-memory if unset) |
 | `PLURB_TRUST_PROXY` | – | `1` to take client IPs from nginx's `X-Real-IP` |
+| `PLURB_RATE_LIMIT_SCALE` | `1` | multiply all rate limits (load tests only) |
 
 ### Tests
 
@@ -92,6 +95,31 @@ createdb plurb_test
 PLURB_TEST_DATABASE_URL='postgres://plurb:plurb@localhost:5432/plurb_test?sslmode=disable' go test ./...
 # optionally also run the cache tests against Redis:
 PLURB_TEST_REDIS_URL=redis://localhost:6379/15 go test ./internal/cache
+```
+
+### CI
+
+`.github/workflows/ci.yml` runs gofmt, vet and the full integration suite with the race
+detector against Postgres 18 and Redis service containers, then boots the built binary and
+runs a k6 smoke test against it.
+
+### Load testing
+
+[k6](https://k6.io) scripts live in `loadtest/`:
+
+```bash
+PLURB_SIGNUP=open PLURB_RATE_LIMIT_SCALE=1000 go run ./cmd/plurb serve
+k6 run -e BASE=http://127.0.0.1:8080 -e VUS=50 loadtest/read.js    # pages, post, thread
+k6 run -e BASE=http://127.0.0.1:8080 -e VUS=30 loadtest/mixed.js   # sign-up, comment, vote
+```
+
+`mixed.js` concentrates votes on a few threads to exercise the vote transaction's row locks.
+Afterwards, check the invariant it protects:
+
+```sql
+SELECT t.id, t.score, sum(v.value * v.weight)
+FROM threads t LEFT JOIN votes v ON v.target_type = 'thread' AND v.target_id = t.id
+GROUP BY t.id HAVING abs(t.score - COALESCE(sum(v.value * v.weight), 0)) > 1e-9;  -- expect no rows
 ```
 
 ## Deployment

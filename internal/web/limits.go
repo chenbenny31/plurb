@@ -33,6 +33,9 @@ func (s *Server) clientIP(r *http.Request) string {
 // allow applies a sliding-window limit and, when exceeded, answers 429 with
 // Retry-After. Callers return immediately when it reports false.
 func (s *Server) allow(w http.ResponseWriter, r *http.Request, key string, limit int, window time.Duration) bool {
+	if scale := s.cfg.RateLimitScale; scale > 0 && scale != 1 {
+		limit = int(math.Max(1, float64(limit)*scale))
+	}
 	ok, retry, err := s.kv.Limiter.Allow(r.Context(), key, limit, window)
 	if err != nil {
 		s.log.Warn("rate limiter unavailable, allowing", "key", key, "err", err)

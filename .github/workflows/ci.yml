@@ -1,0 +1,88 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: plurb
+          POSTGRES_PASSWORD: plurb
+          POSTGRES_DB: plurb_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U plurb" --health-interval 2s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      PLURB_TEST_DATABASE_URL: postgres://plurb:plurb@localhost:5432/plurb_test?sslmode=disable
+      PLURB_TEST_REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - name: vet
+        run: go vet ./...
+      - name: test (integration, race detector)
+        run: go test -race -count=1 ./...
+      - name: build
+        run: CGO_ENABLED=0 go build -trimpath -o bin/plurb ./cmd/plurb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plurb-linux-amd64
+          path: bin/plurb
+
+  # Boots the real binary against Postgres + Redis and runs a short k6 smoke
+  # load test, so a regression that only shows under concurrency fails CI.
+  smoke:
+    needs: test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: plurb
+          POSTGRES_PASSWORD: plurb
+          POSTGRES_DB: plurb
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U plurb" --health-interval 2s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgres://plurb:plurb@localhost:5432/plurb?sslmode=disable
+      REDIS_URL: redis://localhost:6379/0
+      PLURB_ADDR: 127.0.0.1:8080
+      PLURB_DEV: "1"
+      PLURB_SIGNUP: open
+      PLURB_RATE_LIMIT_SCALE: "1000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: plurb-linux-amd64
+          path: bin
+      - name: start plurb
+        run: |
+          chmod +x bin/plurb
+          bin/plurb serve > plurb.log 2>&1 &
+          for i in $(seq 30); do curl -fs localhost:8080/healthz && break; sleep 1; done
+      - uses: grafana/setup-k6-action@v1
+      - name: k6 smoke
+        run: k6 run -e BASE=http://127.0.0.1:8080 -e VUS=10 -e DURATION=20s loadtest/mixed.js
+      - name: server log
+        if: always()
+        run: cat plurb.log

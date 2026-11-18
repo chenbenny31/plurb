@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -24,6 +25,8 @@ type Config struct {
 	// RedisURL enables Redis for caching, rate limits and view counting;
 	// empty means in-process memory (fine for a single instance).
 	RedisURL string
+	// RateLimitScale multiplies every rate limit (e.g. 1000 for load tests).
+	RateLimitScale float64
 	// TrustProxy takes the client IP from X-Real-IP (set by our nginx).
 	// Only enable behind a proxy that overwrites that header.
 	TrustProxy bool
@@ -47,6 +50,14 @@ func Load() (Config, error) {
 
 		GitHubClientID:     env("GITHUB_CLIENT_ID", ""),
 		GitHubClientSecret: env("GITHUB_CLIENT_SECRET", ""),
+	}
+	c.RateLimitScale = 1
+	if v := env("PLURB_RATE_LIMIT_SCALE", ""); v != "" {
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil || f <= 0 {
+			return Config{}, fmt.Errorf("PLURB_RATE_LIMIT_SCALE must be a positive number, got %q", v)
+		}
+		c.RateLimitScale = f
 	}
 	u, err := url.Parse(c.BaseURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
