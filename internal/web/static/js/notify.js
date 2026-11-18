@@ -1,14 +1,17 @@
-// Live inbox badge over Server-Sent Events. EventSource reconnects by itself.
+// Live unread badges (nav and account menu) over Server-Sent Events.
+// EventSource reconnects by itself.
 (function () {
-  var badge = document.getElementById('inboxCount');
-  if (!badge || !window.EventSource) return;
-  var baseTitle = document.title;
+  var badges = document.querySelectorAll('[data-unread]');
+  if (!badges.length || !window.EventSource) return;
+  var baseTitle = document.title.replace(/^\(\d+\) /, '');
   var es = new EventSource('/notifications/stream');
   es.addEventListener('unread', function (e) {
     var d = JSON.parse(e.data);
-    badge.textContent = d.unread;
-    badge.hidden = d.unread === 0;
+    badges.forEach(function (b) {
+      b.textContent = d.unread;
+      b.hidden = d.unread === 0;
+      if (d.latest) b.parentElement.title = d.latest.text;
+    });
     document.title = d.unread > 0 ? '(' + d.unread + ') ' + baseTitle : baseTitle;
-    if (d.latest) badge.parentElement.title = d.latest.text;
   });
 })();

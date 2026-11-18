@@ -37,7 +37,10 @@
 
     --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB",
                "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
-    --font-read: Charter, "Bitstream Charter", "Iowan Old Style", Georgia, "Songti SC",
+    /* Latin faces first: a CJK font earlier in the list would also draw Latin
+       punctuation, as full-width glyphs. */
+    --font-read: Charter, "Bitstream Charter", "Iowan Old Style", Georgia,
+                 "Noto Serif", "Liberation Serif", "DejaVu Serif", "Songti SC",
                  "Noto Serif CJK SC", serif;
     --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
@@ -357,7 +360,6 @@ a.module-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); bo
 .module-name { font-size: var(--fs-xl); }
 .module-desc { color: var(--text-soft); flex: 1; }
 .module-link { font-size: var(--fs-sm); font-weight: 600; color: var(--link); }
-.module-soon { opacity: 0.6; }
 .principles {
     max-width: var(--w-wide); margin: var(--s6) auto 0; padding: 0 var(--s5);
     display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s2) var(--s6);
@@ -441,6 +443,8 @@ ol.post-list > li::before {
 .rep-stats dd { margin: 0; font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
 .rep-stats dd.up { color: #15803d; }
 .rep-stats dd.down { color: #b91c1c; }
+/* reputation ledger: only the thread title may wrap */
+.rep-table td:not(:nth-child(3)) { white-space: nowrap; }
 .rep-activity { font-size: var(--fs-sm); padding-top: var(--s3); border-top: 1px solid var(--border); margin-bottom: var(--s2); }
 
 /* single post / reading */

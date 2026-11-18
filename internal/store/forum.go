@@ -416,16 +416,24 @@ func (s *Store) RebuildReputation(ctx context.Context) (int64, error) {
 // RepEvent is one ledger line, for the user's reputation history page.
 type RepEvent struct {
 	Delta      int
-	Reason     string
-	TargetType string
+	Reason     string // upvote_received, downvote_received, vote_retracted
+	TargetType string // "thread", "comment" or "" (e.g. a manual adjustment)
 	TargetID   int64
 	CreatedAt  time.Time
+
+	// The thread the target lives in; zero / empty if it was deleted.
+	ThreadID    int64
+	ThreadTitle string
 }
 
 func (s *Store) RepHistory(ctx context.Context, userID int64, limit int) ([]RepEvent, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT delta, reason, COALESCE(target_type, ''), COALESCE(target_id, 0), created_at
-		FROM rep_events WHERE user_id = $1 ORDER BY id DESC LIMIT $2`, userID, limit)
+		SELECT r.delta, r.reason, COALESCE(r.target_type, ''), COALESCE(r.target_id, 0), r.created_at,
+		       COALESCE(t.id, 0), COALESCE(t.title, '')
+		FROM rep_events r
+		LEFT JOIN comments c ON r.target_type = 'comment' AND c.id = r.target_id
+		LEFT JOIN threads t ON t.id = CASE WHEN r.target_type = 'thread' THEN r.target_id ELSE c.thread_id END
+		WHERE r.user_id = $1 ORDER BY r.id DESC LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -433,7 +441,8 @@ func (s *Store) RepHistory(ctx context.Context, userID int64, limit int) ([]RepE
 	var out []RepEvent
 	for rows.Next() {
 		var e RepEvent
-		if err := rows.Scan(&e.Delta, &e.Reason, &e.TargetType, &e.TargetID, &e.CreatedAt); err != nil {
+		if err := rows.Scan(&e.Delta, &e.Reason, &e.TargetType, &e.TargetID, &e.CreatedAt,
+			&e.ThreadID, &e.ThreadTitle); err != nil {
 			return nil, err
 		}
 		out = append(out, e)

@@ -115,7 +115,7 @@ func TestForumVoting(t *testing.T) {
 	_, page := a.get("/forum/t/" + id)
 	mustContain(t, page, `<span class="vote-score" title="Reputation-weighted score">1</span>`)
 	_, page = a.get("/forum/reputation")
-	mustContain(t, page, "upvote_received", "vote_retracted")
+	mustContain(t, page, "Upvote on your thread", "Vote withdrawn on your thread")
 	_, page = a.get("/panorama/alice")
 	mustContain(t, page, `@alice <span class="lv lv-1"`) // 5 points: floor caps the level at 1
 }
@@ -163,4 +163,20 @@ func TestAuthorPageVisitorView(t *testing.T) {
 	// The author sees the same page, plus an edit link.
 	_, page = a.get("/panorama/alice")
 	mustContain(t, page, `Edit profile`)
+}
+
+func TestRepHistoryIsReadable(t *testing.T) {
+	a := newTestApp(t, nil)
+	a.matureUser("alice", "alice password", 0)
+	a.matureUser("bob", "bob password", 300)
+	a.login("alice", "alice password")
+	id := strings.TrimPrefix(a.newThread("Ledger thread", "x"), "/forum/t/")
+	bob := newClientFor(a)
+	bob.login("bob", "bob password")
+	vote(bob, "thread", id, "1")
+
+	_, page := a.get("/forum/reputation")
+	mustContain(t, page, `Upvote on your thread`)
+	mustContain(t, page, `<a href="/forum/t/`+id+`">Ledger thread</a>`)
+	mustNotContain(t, page, `upvote_received`)
 }

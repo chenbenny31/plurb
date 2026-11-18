@@ -33,7 +33,7 @@
             </form>
             {{end}}
             {{if .User}}
-                <a class="nav-link nav-inbox" href="/notifications" title="Inbox">Inbox<span id="inboxCount" class="badge"{{if not .Unread}} hidden{{end}}>{{.Unread}}</span></a>
+                <a class="nav-link nav-inbox" href="/notifications" title="Inbox">Inbox<span class="badge" data-unread{{if not .Unread}} hidden{{end}}>{{.Unread}}</span></a>
                 <details class="menu">
                     <summary aria-label="Account menu">{{avatar .User.Username .User.DisplayName}}</summary>
                     <div class="menu-panel">
@@ -41,7 +41,7 @@
                             <strong>{{.User.DisplayName}}</strong>
                             <span class="muted">@{{.User.Username}} · {{levelName .User.Reputation}}</span>
                         </div>
-                        <a href="/notifications">Inbox{{if .Unread}} <span class="badge">{{.Unread}}</span>{{end}}</a>
+                        <a href="/notifications">Inbox <span class="badge" data-unread{{if not .Unread}} hidden{{end}}>{{.Unread}}</span></a>
                         <a href="/panorama/{{.User.Username}}">Your profile</a>
                         <a href="/panorama/editor">Dashboard</a>
                         <a href="/panorama/editor/new">New post</a>

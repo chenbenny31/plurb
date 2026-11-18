@@ -99,7 +99,7 @@ func TestReplyNotificationStream(t *testing.T) {
 		t.Fatalf("after reading inbox: unread = %d", ev.Unread)
 	}
 	_, page = a.get("/panorama")
-	mustContain(t, page, `id="inboxCount" class="badge" hidden>0<`)
+	mustContain(t, page, `<span class="badge" data-unread hidden>0<`)
 }
 
 func TestStreamRequiresLoginAndClosesOnShutdown(t *testing.T) {
