@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -186,5 +187,27 @@ func TestProfile(t *testing.T) {
 	mustContain(t, body, "Posts tagged go", "Hello World")
 	if resp, _ := a.get("/panorama/benny/tag/nope"); resp.StatusCode != 404 {
 		t.Errorf("unknown tag: %d", resp.StatusCode)
+	}
+}
+
+func TestPostSlugAvoidsAuthorTabs(t *testing.T) {
+	a := newTestApp(t, nil)
+	a.createUser("alice", "alice password")
+	a.login("alice", "alice password")
+	for _, title := range []string{"About", "Threads"} {
+		resp, _ := a.post("/panorama/editor/new", url.Values{"title": {title}, "body": {"x"}}, nil)
+		if resp.StatusCode != http.StatusSeeOther {
+			t.Fatalf("create %q: %d", title, resp.StatusCode)
+		}
+	}
+	var slugs []string
+	rows, _ := a.srv.db.Query(`SELECT slug FROM posts ORDER BY id`)
+	for rows.Next() {
+		var s string
+		rows.Scan(&s)
+		slugs = append(slugs, s)
+	}
+	if strings.Join(slugs, ",") != "about-2,threads-2" {
+		t.Fatalf("slugs = %v, want about-2,threads-2", slugs)
 	}
 }

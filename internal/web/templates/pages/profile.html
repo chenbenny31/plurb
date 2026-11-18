@@ -1,49 +1,95 @@
 {{define "main"}}
-{{$u := .Data.Author}}
-<main class="container">
+{{$u := .Data.Author}}{{$st := .Data.Stats}}{{$lv := level $u.Reputation}}
+<main class="container-wide">
     <section class="profile-header">
         {{avatar $u.Username $u.DisplayName}}
-        <div>
+        <div class="profile-id">
             <h1>{{$u.DisplayName}}</h1>
             <p class="username">@{{$u.Username}} {{template "lv" $u.Reputation}}
+                <span>· joined {{date $u.CreatedAt}}</span>
                 <a class="rss-link" href="/panorama/{{$u.Username}}/feed.xml">RSS</a></p>
         </div>
+        {{if .Data.Own}}<a class="button button-ghost" href="/panorama/editor/about">Edit profile</a>{{end}}
     </section>
 
-    <div class="profile-tabs">
-        <a class="tab-btn{{if eq .Data.Tab "posts"}} tab-active{{end}}" href="/panorama/{{$u.Username}}">Posts</a>
-        <a class="tab-btn{{if eq .Data.Tab "about"}} tab-active{{end}}" href="/panorama/{{$u.Username}}/about">About</a>
-    </div>
+    <div class="profile-layout">
+    <div class="profile-main">
+        <nav class="profile-tabs">
+            <a class="tab-btn{{if eq .Data.Tab "posts"}} tab-active{{end}}" href="/panorama/{{$u.Username}}">Posts <span class="tab-count">{{$st.Posts}}</span></a>
+            <a class="tab-btn{{if eq .Data.Tab "threads"}} tab-active{{end}}" href="/panorama/{{$u.Username}}/threads">Threads <span class="tab-count">{{$st.Threads}}</span></a>
+            <a class="tab-btn{{if eq .Data.Tab "about"}} tab-active{{end}}" href="/panorama/{{$u.Username}}/about">About</a>
+        </nav>
 
-    <div class="tab-content">
-    {{if eq .Data.Tab "about"}}
-        {{if .Data.About}}<div class="post-body">{{.Data.About}}</div>{{else}}<p>Nothing here yet.</p>{{end}}
-    {{else}}
-        {{if .Data.Series}}
-        <section>
-            <h2 class="section-label">Series</h2>
-            <ul class="series-list">
-                {{range .Data.Series}}
-                <li><a href="/panorama/{{$u.Username}}/series/{{.Slug}}">{{.Title}}</a> <span class="hint">{{.PostCount}} posts</span></li>
-                {{end}}
-            </ul>
-        </section>
-        {{end}}
-        <section>
-            <h2 class="section-label">Posts</h2>
-            {{if .Data.Posts}}
-            <ul class="post-list">
-                {{range .Data.Posts}}
-                <li>
-                    <a href="/panorama/{{$u.Username}}/{{.Slug}}">{{.Title}}</a>
-                    <span class="date">{{date .PublishedAt}}</span>
-                    {{template "tags" .}}
+        <div class="tab-content">
+        {{if eq .Data.Tab "about"}}
+            {{if .Data.About}}<div class="post-body">{{.Data.About}}</div>{{else}}<p class="empty">{{$u.DisplayName}} hasn’t written an about page yet.</p>{{end}}
+        {{else if eq .Data.Tab "threads"}}
+            {{if .Data.Threads}}
+            <ol class="thread-list thread-list-compact">
+                {{range .Data.Threads}}
+                <li class="thread-row">
+                    <span class="thread-score" title="Reputation-weighted score">{{score .Score}}<small>score</small></span>
+                    <div class="thread-main">
+                        <a class="thread-title" href="/forum/t/{{.ID}}">{{.Title}}</a>
+                        <div class="post-meta"><span class="date">{{ago .CreatedAt}}</span></div>
+                    </div>
+                    <a class="thread-comments" href="/forum/t/{{.ID}}#comments" title="Comments">
+                        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M2 3h12v8H6l-3 3v-3H2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                        {{.CommentCount}}
+                    </a>
                 </li>
                 {{end}}
-            </ul>
-            {{else}}<p>No posts yet.</p>{{end}}
-        </section>
-    {{end}}
+            </ol>
+            {{else}}<p class="empty">No threads yet.</p>{{end}}
+        {{else}}
+            {{if .Data.Series}}
+            <section>
+                <h2 class="section-label">Series</h2>
+                <ul class="series-list">
+                    {{range .Data.Series}}
+                    <li><a href="/panorama/{{$u.Username}}/series/{{.Slug}}">{{.Title}}</a> <span class="hint">{{.PostCount}} posts</span></li>
+                    {{end}}
+                </ul>
+            </section>
+            {{end}}
+            <section>
+                {{if .Data.Series}}<h2 class="section-label">All posts</h2>{{end}}
+                {{if .Data.Posts}}
+                <ul class="post-list">
+                    {{range .Data.Posts}}
+                    <li>
+                        <a href="/panorama/{{$u.Username}}/{{.Slug}}">{{.Title}}</a>
+                        <span class="date">{{date .PublishedAt}}</span>
+                        {{template "tags" .}}
+                    </li>
+                    {{end}}
+                </ul>
+                {{else}}<p class="empty">No posts yet.</p>{{end}}
+            </section>
+        {{end}}
+        </div>
+    </div>
+
+    <aside class="rep-card card" aria-label="Reputation">
+        <h2 class="section-label">Reputation</h2>
+        <div class="rep-level">
+            {{template "lv" $u.Reputation}}
+            <span class="rep-band">{{with .Data.TopPercent}}{{if le . 50}}Top {{.}}%{{else}}Contributor{{end}}{{else}}Not ranked yet{{end}}</span>
+        </div>
+        <div class="rep-ladder" title="Levels 1–5">
+            <span class="{{if ge $lv 1}}on{{end}}"></span><span class="{{if ge $lv 2}}on{{end}}"></span><span class="{{if ge $lv 3}}on{{end}}"></span><span class="{{if ge $lv 4}}on{{end}}"></span><span class="{{if ge $lv 5}}on{{end}}"></span>
+        </div>
+        <dl class="rep-stats">
+            <div><dt>Points</dt><dd>{{$u.Reputation}}</dd></div>
+            <div><dt>Last 30 days</dt><dd class="{{if gt $st.Last30Days 0}}up{{else if lt $st.Last30Days 0}}down{{end}}">{{if gt $st.Last30Days 0}}+{{end}}{{$st.Last30Days}}</dd></div>
+            <div><dt>From threads</dt><dd>{{$st.FromThreads}}</dd></div>
+            <div><dt>From comments</dt><dd>{{$st.FromComments}}</dd></div>
+            <div><dt>Upvotes</dt><dd>{{$st.UpvotesReceived}}</dd></div>
+            <div><dt>Downvotes</dt><dd>{{$st.DownvotesReceived}}</dd></div>
+        </dl>
+        <p class="rep-activity">{{$st.Posts}} posts · {{$st.Threads}} threads · {{$st.Comments}} comments</p>
+        <p class="hint">Votes received on threads and comments. Levels rank points against the whole community and refresh every few minutes.</p>
+    </aside>
     </div>
 </main>
 {{end}}

@@ -115,6 +115,7 @@ func (s *Server) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /panorama/search", s.search)
 	mux.HandleFunc("GET /panorama/{username}", s.profile)
 	mux.HandleFunc("GET /panorama/{username}/about", s.profile)
+	mux.HandleFunc("GET /panorama/{username}/threads", s.profile)
 	mux.HandleFunc("GET /panorama/{username}/tag/{tag}", s.authorTag)
 	mux.HandleFunc("GET /panorama/{username}/series/{series}", s.authorSeries)
 	mux.HandleFunc("GET /panorama/{username}/{slug}", s.post)

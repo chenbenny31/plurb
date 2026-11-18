@@ -307,3 +307,45 @@ func TestRepLevelsFromDistribution(t *testing.T) {
 		t.Errorf("highest rep ranks top %d%%, want 1%%", top)
 	}
 }
+
+func TestUserStats(t *testing.T) {
+	f := newForum(t)
+	ctx := context.Background()
+	alice := f.user("alice", 0, old)
+	bob := f.user("bob", 100, old)
+	carol := f.user("carol", 100, old)
+
+	th := f.thread(alice)
+	other := f.thread(bob)
+	c, err := f.st.CreateComment(ctx, other, 0, alice, "a comment")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.vote(bob, "thread", th, 1)
+	f.vote(carol, "thread", th, 1)
+	f.vote(carol, "thread", th, 0) // retracted: neither counted nor credited
+	f.vote(bob, "comment", c, 1)
+	f.vote(carol, "comment", c, -1)
+
+	st, err := f.st.UserStats(ctx, alice)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Threads != 1 || st.Comments != 1 || st.Posts != 0 {
+		t.Errorf("counts = %+v", st)
+	}
+	if st.UpvotesReceived != 2 || st.DownvotesReceived != 1 {
+		t.Errorf("votes = %+v", st)
+	}
+	if st.FromThreads+st.FromComments != f.rep(alice) || st.Last30Days != f.rep(alice) {
+		t.Errorf("breakdown %+v doesn't add up to reputation %d", st, f.rep(alice))
+	}
+	if st.FromThreads <= 0 {
+		t.Errorf("thread upvote should be credited: %+v", st)
+	}
+
+	ts, err := f.st.ThreadsByAuthor(ctx, alice, 10)
+	if err != nil || len(ts) != 1 || ts[0].ID != th {
+		t.Fatalf("ThreadsByAuthor = %v %v", ts, err)
+	}
+}

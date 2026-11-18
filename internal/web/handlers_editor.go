@@ -191,7 +191,7 @@ func (s *Server) resolveSlug(r *http.Request, authorID, postID int64, explicit, 
 			return "", "Couldn't check the slug, please retry."
 		}
 		if taken {
-			return "", "You already have a post with that slug."
+			return "", "That slug is taken (by another post of yours or an author-page tab)."
 		}
 		return explicit, ""
 	}

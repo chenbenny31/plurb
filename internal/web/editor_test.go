@@ -110,7 +110,7 @@ func TestEditorValidation(t *testing.T) {
 
 	a.post("/panorama/editor/new", formOf("One", "x", "slug", "taken"), nil)
 	_, body = a.post("/panorama/editor/new", formOf("Two", "x", "slug", "taken"), nil)
-	mustContain(t, body, "already have a post with that slug")
+	mustContain(t, body, "That slug is taken")
 }
 
 func TestCannotTouchOthersPosts(t *testing.T) {

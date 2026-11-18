@@ -101,13 +101,24 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 
 // ---- author pages ----
 
+// profilePage is an author's public page: what any visitor sees, including
+// the author themself.
 type profilePage struct {
-	Author *store.User
-	Tab    string // "about" or "posts"
-	About  template.HTML
-	Posts  []*store.Post
-	Series []store.Series
+	Author  *store.User
+	Tab     string // "posts", "threads" or "about"
+	About   template.HTML
+	Posts   []*store.Post
+	Series  []store.Series
+	Threads []*store.Thread
+
+	Stats      *store.UserStats
+	TopPercent int // 0 = no reputation yet
+	Own        bool
 }
+
+// profileThreadLimit caps the Threads tab; it's a recent-activity view,
+// not an archive.
+const profileThreadLimit = 50
 
 func (s *Server) author(w http.ResponseWriter, r *http.Request) (*store.User, bool) {
 	u, err := s.store.UserByUsername(r.Context(), r.PathValue("username"))
@@ -127,24 +138,47 @@ func (s *Server) profile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	ctx := r.Context()
 	d := profilePage{Author: u, Tab: "posts"}
-	if r.URL.Query().Get("tab") == "about" || strings.HasSuffix(r.URL.Path, "/about") {
+	switch {
+	case strings.HasSuffix(r.URL.Path, "/about"):
 		d.Tab = "about"
+	case strings.HasSuffix(r.URL.Path, "/threads"):
+		d.Tab = "threads"
 	}
-	if d.Tab == "about" {
+	if me := currentUser(r); me != nil && me.ID == u.ID {
+		d.Own = true
+	}
+
+	var err error
+	if d.Stats, err = s.store.UserStats(ctx, u.ID); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	if d.TopPercent, err = s.store.RepTopPercent(ctx, u.Reputation); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+
+	switch d.Tab {
+	case "about":
 		out, err := s.md.Render(u.AboutMD)
 		if err != nil {
 			s.serverError(w, r, err)
 			return
 		}
 		d.About = out.HTML
-	} else {
-		var err error
-		if d.Posts, err = s.store.PublishedByAuthor(r.Context(), u.ID, ""); err != nil {
+	case "threads":
+		if d.Threads, err = s.store.ThreadsByAuthor(ctx, u.ID, profileThreadLimit); err != nil {
 			s.serverError(w, r, err)
 			return
 		}
-		if d.Series, err = s.store.SeriesWithPosts(r.Context(), u.ID); err != nil {
+	default:
+		if d.Posts, err = s.store.PublishedByAuthor(ctx, u.ID, ""); err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		if d.Series, err = s.store.SeriesWithPosts(ctx, u.ID); err != nil {
 			s.serverError(w, r, err)
 			return
 		}

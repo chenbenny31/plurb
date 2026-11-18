@@ -49,8 +49,16 @@ func Slug(title, prefix string, maxLen int) string {
 	return s
 }
 
-// SlugTaken reports whether the author already has another post with slug.
+// reservedSlugs are author-page tabs at /panorama/{username}/{tab}; a post
+// with one of these slugs would be unreachable.
+var reservedSlugs = map[string]bool{"about": true, "threads": true}
+
+// SlugTaken reports whether the author already has another post with slug,
+// or the slug is a reserved page name.
 func (s *Store) SlugTaken(ctx context.Context, authorID int64, slug string, excludeID int64) (bool, error) {
+	if reservedSlugs[slug] {
+		return true, nil
+	}
 	var taken bool
 	err := s.db.QueryRowContext(ctx, `SELECT EXISTS (
 		SELECT 1 FROM posts WHERE author_id = $1 AND slug = $2 AND id <> $3)`,

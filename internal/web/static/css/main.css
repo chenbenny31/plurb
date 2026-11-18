@@ -421,6 +421,27 @@ ol.post-list > li::before {
 .profile-header { display: flex; align-items: center; gap: var(--s4); margin-bottom: var(--s6); }
 .profile-header h1 { font-size: var(--fs-2xl); }
 .profile-header .username { color: var(--muted); font-size: var(--fs-sm); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.profile-id { flex: 1; min-width: 0; }
+.profile-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: var(--s7); align-items: start; }
+.tab-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 600; margin-left: 2px; }
+.thread-list-compact .thread-row { padding: var(--s3) var(--s4); }
+
+/* reputation card on author pages */
+.rep-card { position: sticky; top: calc(var(--nav-h) + var(--s5)); padding: var(--s5); }
+.rep-card .section-label { margin-top: 0; }
+.rep-level { display: flex; align-items: center; gap: var(--s3); }
+.rep-level .lv { font-size: var(--fs-md); padding: 2px var(--s3); }
+.rep-band { font-weight: 600; }
+.rep-ladder { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: var(--s3) 0 var(--s4); }
+.rep-ladder span { height: 6px; border-radius: var(--radius-pill); background: var(--border); }
+.rep-ladder span.on { background: var(--sky); }
+.rep-ladder span.on:nth-child(n+4) { background: var(--brand); }
+.rep-stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3) var(--s4); margin: 0 0 var(--s4); }
+.rep-stats dt { color: var(--muted); font-size: var(--fs-xs); }
+.rep-stats dd { margin: 0; font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
+.rep-stats dd.up { color: #15803d; }
+.rep-stats dd.down { color: #b91c1c; }
+.rep-activity { font-size: var(--fs-sm); padding-top: var(--s3); border-top: 1px solid var(--border); margin-bottom: var(--s2); }
 
 /* single post / reading */
 .post-header { margin-bottom: var(--s6); }
@@ -581,6 +602,8 @@ ol.post-list > li::before {
 /* ---------- responsive ---------- */
 @media (max-width: 900px) {
     .index-layout { grid-template-columns: 1fr; }
+    .profile-layout { grid-template-columns: 1fr; gap: var(--s5); }
+    .rep-card { position: static; order: -1; }
     .nav-search { display: none; }
 }
 @media (max-width: 640px) {

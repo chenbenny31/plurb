@@ -138,3 +138,29 @@ func TestForumHotOrdering(t *testing.T) {
 		t.Error("top: higher score should come first")
 	}
 }
+
+func TestAuthorPageVisitorView(t *testing.T) {
+	a := newTestApp(t, nil)
+	a.matureUser("alice", "alice password", 0)
+	a.matureUser("bob", "bob password", 300)
+	a.login("alice", "alice password")
+	id := strings.TrimPrefix(a.newThread("Alice asks something", "x"), "/forum/t/")
+	bob := newClientFor(a)
+	bob.login("bob", "bob password")
+	vote(bob, "thread", id, "1")
+
+	// Another member sees the threads tab and the reputation card, no edit link.
+	resp, page := bob.get("/panorama/alice/threads")
+	if resp.StatusCode != 200 {
+		t.Fatalf("threads tab: %d", resp.StatusCode)
+	}
+	mustContain(t, page, `Alice asks something`)
+	mustContain(t, page, `<a class="tab-btn tab-active" href="/panorama/alice/threads">Threads <span class="tab-count">1</span>`)
+	mustContain(t, page, `aria-label="Reputation"`)
+	mustContain(t, page, `<dt>Upvotes</dt><dd>1</dd>`)
+	mustNotContain(t, page, `Edit profile`)
+
+	// The author sees the same page, plus an edit link.
+	_, page = a.get("/panorama/alice")
+	mustContain(t, page, `Edit profile`)
+}
