@@ -1,6 +1,6 @@
 /* plurb — one stylesheet, no framework.
  *
- * 1. tokens      colour, type, space, radius, shadow (light + dark)
+ * 1. tokens      colour, type, space, radius, shadow
  * 2. base        element defaults
  * 3. layout      containers, nav, footer
  * 4. components  buttons, forms, tags, avatar, menu, cards, tabs, ...
@@ -71,32 +71,6 @@
     --nav-h: 60px;
 }
 
-html.dark {
-    color-scheme: dark;
-    --bg: #0b1220;
-    --bg-soft: #0f172a;
-    --surface: #111a2e;
-    --border: #1e293b;
-    --border-strong: #334155;
-    --text: #e2e8f0;
-    --text-soft: #cbd5e1;
-    --muted: #94a3b8;
-    --link: #38bdf8;
-    --sky: #38bdf8;
-    --sky-soft: rgb(56 189 248 / 0.14);
-    --sky-tint: rgb(56 189 248 / 0.06);
-    --brand: #fb923c;
-    --brand-ink: #1c1917;
-    --brand-text: #fb923c;
-    --brand-soft: rgb(251 146 60 / 0.12);
-    --danger: #f87171;
-    --danger-soft: rgb(248 113 113 / 0.12);
-    --success: #4ade80;
-    --success-soft: rgb(74 222 128 / 0.1);
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.35);
-}
-
 /* ---------- 2. base ---------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
@@ -161,11 +135,6 @@ hr { border: none; border-top: 1px solid var(--border); margin: var(--s6) 0; }
 }
 .nav-search input:focus { width: 260px; background: var(--surface); }
 .nav-link { color: var(--text-soft); font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; }
-.icon-button {
-    display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0;
-    background: transparent; color: var(--text-soft); border: 1px solid var(--border); border-radius: var(--radius-pill);
-}
-.icon-button:hover { color: var(--text); background: var(--bg-soft); }
 
 /* footer */
 .site-footer { border-top: 1px solid var(--border); margin-top: var(--s7); }
@@ -263,10 +232,6 @@ textarea { font-family: var(--font-mono); font-size: var(--fs-sm); line-height: 
 .tint-sky { background: #e0f2fe; color: #075985; }
 .tint-slate { background: #e2e8f0; color: #334155; }
 .tint-sand { background: #fef3c7; color: #92400e; }
-html.dark .tint-orange { background: rgb(251 146 60 / 0.2); color: #fdba74; }
-html.dark .tint-sky { background: rgb(56 189 248 / 0.18); color: #7dd3fc; }
-html.dark .tint-slate { background: #334155; color: #e2e8f0; }
-html.dark .tint-sand { background: rgb(251 191 36 / 0.16); color: #fcd34d; }
 
 /* dropdown menu (native <details>) */
 .menu { position: relative; }

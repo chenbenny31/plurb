@@ -3,8 +3,6 @@ package markdown
 import (
 	"bytes"
 	"html/template"
-	"regexp"
-	"strings"
 	"sync"
 
 	"github.com/alecthomas/chroma/v2"
@@ -76,31 +74,15 @@ func renderFencedCode(w util.BufWriter, source []byte, n ast.Node, entering bool
 var (
 	codeCSSOnce sync.Once
 	codeCSS     string
-	cssRule     = regexp.MustCompile(`(?m)^(/\*[^*]*\*/ )?([^{}\n]+)\{`)
 )
 
-// CodeCSS returns the stylesheet for highlighted code: a light theme by
-// default and a dark one under html.dark, matching the site theme toggle.
-// Each theme is scoped to its mode, so a token class that only one theme
-// defines (e.g. github's punctuation colour) can't leak into the other.
+// CodeCSS returns the stylesheet for highlighted code (GitHub's light theme;
+// the site is white-only).
 func CodeCSS() string {
 	codeCSSOnce.Do(func() {
-		var light, dark bytes.Buffer
+		var light bytes.Buffer
 		codeFormatter.WriteCSS(&light, styles.Get("github"))
-		codeFormatter.WriteCSS(&dark, styles.Get("github-dark"))
-		codeCSS = scopeCSS(light.String(), "html:not(.dark) ") + scopeCSS(dark.String(), "html.dark ")
+		codeCSS = light.String()
 	})
 	return codeCSS
-}
-
-// scopeCSS prefixes every selector of chroma's one-rule-per-line CSS.
-func scopeCSS(css, prefix string) string {
-	return cssRule.ReplaceAllStringFunc(css, func(rule string) string {
-		m := cssRule.FindStringSubmatch(rule)
-		sels := strings.Split(m[2], ",")
-		for i, s := range sels {
-			sels[i] = prefix + strings.TrimSpace(s)
-		}
-		return m[1] + strings.Join(sels, ", ") + " {"
-	})
 }
