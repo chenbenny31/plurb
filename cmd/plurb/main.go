@@ -26,10 +26,14 @@ import (
 	"github.com/chenbenny31/plurb/internal/web"
 )
 
+// version is stamped at build time: -ldflags "-X main.version=$(git describe --always --dirty)".
+var version = "dev"
+
 const usage = `usage: plurb <command>
 
 commands:
   serve    apply pending migrations, then run the web server (default)
+  version  print the build version
   migrate [-status]
            apply pending migrations and exit; -status lists applied and
            pending migrations without changing anything
@@ -62,7 +66,11 @@ func run(args []string) error {
 	if len(args) > 0 {
 		cmd, args = args[0], args[1:]
 	}
+	web.Version = version
 	switch cmd {
+	case "version":
+		fmt.Println(version)
+		return nil
 	case "serve":
 		return serve(cfg, log)
 	case "migrate":
@@ -179,6 +187,7 @@ func serve(cfg config.Config, log *slog.Logger) error {
 		defer rdb.Close()
 		kv = be
 	}
+	log.Info("starting", "version", version)
 	log.Info("cache backend", "kind", kv.Name)
 
 	// One LISTEN connection per instance feeds the in-process SSE hub.

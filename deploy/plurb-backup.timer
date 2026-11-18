@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily plurb database backup
+
+[Timer]
+OnCalendar=*-*-* 03:17:00
+RandomizedDelaySec=10m
+# Catch up after the machine was off at 03:17.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

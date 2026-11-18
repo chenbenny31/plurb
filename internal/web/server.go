@@ -131,9 +131,14 @@ func (s *Server) routes(mux *http.ServeMux) {
 	mux.HandleFunc("/", s.notFound)
 }
 
+// Version is the build's version (set by main from -ldflags); /healthz sends
+// it so a deploy can confirm the new binary is the one answering.
+var Version = "dev"
+
 // healthz reports whether the process is up and the database answers.
 func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("X-Plurb-Version", Version)
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 	if err := s.db.PingContext(ctx); err != nil {

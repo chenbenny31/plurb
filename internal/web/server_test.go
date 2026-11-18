@@ -106,6 +106,9 @@ func TestHealthzAndSecurityHeaders(t *testing.T) {
 	if resp.StatusCode != 200 || body != "ok\n" {
 		t.Fatalf("healthz: %d %q", resp.StatusCode, body)
 	}
+	if resp.Header.Get("X-Plurb-Version") == "" {
+		t.Fatal("healthz should report the build version")
+	}
 	if resp.Header.Get("Content-Security-Policy") == "" {
 		t.Fatal("missing Content-Security-Policy")
 	}

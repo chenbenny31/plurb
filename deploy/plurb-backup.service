@@ -1,0 +1,11 @@
+[Unit]
+Description=plurb database backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+# Optional: BACKUP_REMOTE=<rclone destination> for an off-machine copy.
+EnvironmentFile=-/etc/plurb/backup.env
+ExecStart=/opt/plurb/scripts/backup.sh daily
+Nice=10
+IOSchedulingClass=idle

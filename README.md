@@ -28,7 +28,8 @@ weighted by earned reputation.
   replies reach readers connected to any instance, with no extra broker.
 - **Caching & limits.** Redis (optional) caches rendered markdown, buffers view counts
   (write-behind, flushed every 30s) and runs sliding-window rate limits as a Lua script.
-- **One binary.** Templates, CSS and JS are embedded; migrations run on startup.
+- **One binary.** Templates, CSS and JS are embedded; migrations are checksummed and run
+  on startup, and deploys back up, migrate, swap and health-check with automatic rollback.
 
 ## Stack
 
@@ -45,7 +46,7 @@ weighted by earned reputation.
 ## Layout
 
 ```
-cmd/plurb/            entrypoint: serve, migrate, createuser, passwd, rep-rebuild, import-legacy
+cmd/plurb/            entrypoint: serve, migrate, createuser, passwd, rep-rebuild, import-legacy, version
 internal/config/      env configuration
 internal/db/          connection pool, migrator, migrations/*.sql
 internal/store/       data access (plain SQL)
@@ -56,7 +57,8 @@ internal/cache/       cache, rate limiter, view counter (Redis or in-memory)
 internal/notify/      LISTEN/NOTIFY hub feeding SSE streams
 internal/web/         handlers, middleware, templates/, static/
 internal/legacy/      one-off importer from the old Java/Spring database
-deploy/               systemd unit, nginx site, env example, deploy script
+deploy/               provisioning, deploy/upgrade/rollback, backup/restore, systemd units, nginx site
+docs/                 operations guide
 loadtest/             k6 scripts
 .github/workflows/    CI: integration tests with Postgres + Redis, k6 smoke
 ```
@@ -125,16 +127,14 @@ GROUP BY t.id HAVING abs(t.score - COALESCE(sum(v.value * v.weight), 0)) > 1e-9;
 ## Deployment
 
 ```bash
-# once, on the server
-sudo useradd --system --no-create-home plurb
-sudo mkdir -p /opt/plurb /etc/plurb
-sudo cp deploy/plurb.env.example /etc/plurb/plurb.env    # then edit; chmod 600
-sudo cp deploy/plurb.service /etc/systemd/system/ && sudo systemctl enable plurb
-sudo cp deploy/nginx.conf /etc/nginx/sites-available/plurb   # then enable + certbot
-
-# every release, from your machine
-./deploy/deploy.sh user@plurb.org
+./deploy/deploy.sh --setup plurb.org you@example.com user@server   # first time
+./deploy/deploy.sh user@server                                      # every release
 ```
+
+Each release backs up the database, migrates while the old binary keeps
+serving, swaps the binary, and confirms the new version on `/healthz`, rolling
+back automatically if it doesn't come up. Daily backups, restores, migration
+rules and rollbacks are in [docs/operations.md](docs/operations.md).
 
 ### Moving over from the Java version
 
